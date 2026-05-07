@@ -41,6 +41,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local 
+# local
 _reference
 .claude
+
+# playwright MCP test artifacts (not part of source)
+/.playwright-mcp
+/login-page.png
+/page-*.png
+/page-*.jpeg
