@@ -34,3 +34,15 @@ System prompt for the Drafter loads `lib/ipc-profile.md` to ground answers in IP
 ## Statuses
 
 `parsed` → `drafting` → `ready` → `in_review` → `approved`
+
+## Build phases
+
+- ✅ **Phase 0 — Setup.** Next.js 16 + Tailwind + TS scaffold, agent SDK + Supabase + parsers + email + search deps, IPC profile placeholder, env template.
+- ✅ **Phase 1 — Auth + skeleton.** Supabase clients, root `proxy.ts` (session refresh + auth gate), magic-link login restricted to `@integritypro.com`, sign-out, drafts list shell.
+- ✅ **Phase 2 — Parser flow.** PDF/DOCX/text extraction, Parser agent with Zod-typed output, `/drafts/new` (paste-or-upload), `/drafts/[id]` `parsed` view with editable question list and save action.
+- 🚧 **Phase 3 — Drafter + Editor.** Per-question parallel Drafters with `sn-docs` MCP + Tavily web search + user-attached context tools; Editor for voice harmonization; SSE progress stream from `/api/drafts/[id]/draft`; `drafting` UI subscribes and updates per-question.
+- ⬜ **Phase 4 — Read + comment.** `ready` UI renders the assembled Markdown; per-question comment threads; owner/editor inline edits.
+- ⬜ **Phase 5 — Assign + approve.** Reviewer assignment (existing user or email invite); Resend notifications; approve / request-changes actions; `ready → in_review → approved`.
+- ⬜ **Phase 6 — Polish + deploy.** Empty/error states, Vercel + Supabase prod, custom Resend sender domain.
+
+Defaults locked in: Tavily for web search, GPT-5 for Drafter/Editor, GPT-5-mini for Parser, no pgvector / no semantic retrieval (uploads stuff into the prompt up to a size limit), Markdown output rendered in-browser, comment anchoring at question-level only.

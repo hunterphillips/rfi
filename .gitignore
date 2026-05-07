@@ -46,6 +46,7 @@ _reference
 .claude
 
 # playwright MCP test artifacts (not part of source)
+.playwright-mcp
 /.playwright-mcp
 /login-page.png
 /page-*.png
