@@ -2,7 +2,7 @@
 
 Internal IPC tool for drafting RFI responses with an agent workflow. A user pastes/uploads RFI questions; agents extract, draft, and assemble a Markdown response that can be reviewed, commented on, assigned, and approved.
 
-See [README.md](./README.md) for the architecture overview and build phases.
+See [README.md](./README.md) for the architecture overview. The active build plan lives at `.claude/plans/phases.md` (local-only).
 
 ## Stack
 
