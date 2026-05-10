@@ -1,6 +1,6 @@
-# rfi
+# R4
 
-Internal IPC tool for drafting RFI responses with an agent workflow.
+Internal IPC tool for drafting RFx responses (RFI / RFP / RFQ / RFB) with an agent workflow. RFIs are the current focus; the architecture is designed to extend to the other three.
 
 A user pastes or uploads an RFI's questions; a Parser extracts the discrete questions, the user confirms; per-question Drafter agents (with sn-docs MCP, web search, and optional user-attached context as tools) write each answer; an Editor harmonizes voice and assembles a Markdown draft. Drafts can be commented on, assigned for review, and approved.
 

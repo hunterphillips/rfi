@@ -44,10 +44,13 @@ next-env.d.ts
 # local
 _reference
 .claude
+agent-lab
+docs
 
 # playwright MCP test artifacts (not part of source)
 .playwright-mcp
 /.playwright-mcp
+
 /login-page.png
 /page-*.png
 /page-*.jpeg

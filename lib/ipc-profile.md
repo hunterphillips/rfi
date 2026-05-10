@@ -16,14 +16,6 @@ IntegrityPro Consulting (IPC) is a federal and commercial AI/ServiceNow consulta
 
 - _TODO_: 3–5 bullets that capture what IPC does that competitors don't (delivery model, certifications, methodology, IP, etc.)
 
-## Past Performance
-
-- _TODO_: short paragraphs on representative engagements (agency or sector, scope, outcome). Replace placeholders before any real RFI is run through the system.
-
-## Contract Vehicles & Certifications
-
-- _TODO_: GSA schedules, 8(a), small business status, security clearances held by staff, etc.
-
 ## Voice / Tone Guide
 
 - Plainspoken, direct, results-forward.

@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import { sendMagicLink, type LoginState } from "./actions";
+import { Button } from "@/app/components/ui/button";
+import { Input, Label } from "@/app/components/ui/input";
 
 const initial: LoginState = { status: "idle" };
 
@@ -10,39 +12,49 @@ export function LoginForm() {
 
   if (state.status === "ok") {
     return (
-      <div className="rounded-md border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-zinc-900 dark:text-zinc-50">
-          Magic link sent to <span className="font-medium">{state.email}</span>.
+      <div className="rounded-lg border border-line bg-elev-1 p-5 text-sm">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-teal" />
+          <span className="font-display text-[10px] font-medium uppercase tracking-[0.18em] text-teal">
+            Link dispatched
+          </span>
+        </div>
+        <p className="text-ink">
+          Sent to{" "}
+          <span className="font-mono text-ink-2">{state.email}</span>.
         </p>
-        <p className="mt-1 text-zinc-500">
-          Check your inbox and click the link to sign in. The tab can be closed.
+        <p className="mt-2 text-xs leading-relaxed text-ink-3">
+          Open the link from your inbox to sign in. You may close this tab.
         </p>
       </div>
     );
   }
 
   return (
-    <form action={formAction} className="space-y-3">
-      <label className="block text-sm">
-        <span className="text-zinc-700 dark:text-zinc-300">Email</span>
-        <input
+    <form action={formAction} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
           type="email"
           name="email"
           required
           autoComplete="email"
           placeholder="you@integritypro.com"
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         />
-      </label>
-      <button
+      </div>
+
+      <Button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        size="lg"
+        className="w-full"
       >
-        {pending ? "Sending…" : "Send magic link"}
-      </button>
+        {pending ? "Sending…" : "Send magic link →"}
+      </Button>
+
       {state.status === "error" && (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p className="rounded-md border border-[rgba(224,123,123,0.3)] bg-[rgba(224,123,123,0.06)] px-3 py-2 text-xs text-danger">
           {state.message}
         </p>
       )}

@@ -2,7 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { saveQuestions } from "./actions";
-import type { DraftQuestion, DraftRow } from "@/lib/types";
+import { ResearchRunner } from "./research-runner";
+import { EditableTitle } from "./editable-title";
+import { ScopeBadge } from "./scope-badge";
+import { Button } from "@/app/components/ui/button";
+import { Textarea } from "@/app/components/ui/input";
+import { Eyebrow } from "@/app/components/ui/card";
+import type { DraftTopic, DraftRow } from "@/lib/types";
 
 type Item = { localId: string; text: string };
 
@@ -11,7 +17,7 @@ const nextId = () => `q${++counter}`;
 
 export function ParsedView({ draft }: { draft: DraftRow }) {
   const [items, setItems] = useState<Item[]>(
-    draft.questions.map((q: DraftQuestion) => ({
+    draft.topics.map((q: DraftTopic) => ({
       localId: nextId(),
       text: q.text,
     })),
@@ -19,11 +25,31 @@ export function ParsedView({ draft }: { draft: DraftRow }) {
   const [pending, startTransition] = useTransition();
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [researching, setResearching] = useState(false);
+
+  if (researching) {
+    const liveDraft: DraftRow = {
+      ...draft,
+      status: "researching",
+      topics: items.map((it, i) => ({
+        index: i,
+        text: it.text,
+        status: "pending",
+        plan: [],
+        research: [],
+        capability_map: null,
+        feedback_history: [],
+        content: null,
+        sources: [],
+      })),
+    };
+    return <ResearchRunner draft={liveDraft} autoStart />;
+  }
 
   const dirty =
-    items.length !== draft.questions.length ||
+    items.length !== draft.topics.length ||
     items.some(
-      (it, i) => it.text !== (draft.questions[i]?.text ?? "__none__"),
+      (it, i) => it.text !== (draft.topics[i]?.text ?? "__none__"),
     );
 
   function onSave() {
@@ -42,39 +68,46 @@ export function ParsedView({ draft }: { draft: DraftRow }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {draft.title ?? "Untitled draft"}
-        </h1>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          The parser extracted {draft.questions.length} question
-          {draft.questions.length === 1 ? "" : "s"}. Review and adjust before
+    <div className="space-y-8">
+      <header className="space-y-3">
+        <Eyebrow>Step 02 — Confirm topics</Eyebrow>
+        <EditableTitle draftId={draft.id} initialTitle={draft.title} />
+        <p className="max-w-2xl text-sm leading-relaxed text-ink-3">
+          The parser extracted{" "}
+          <span className="font-mono text-ink-2">
+            {draft.topics.length}
+          </span>{" "}
+          topic{draft.topics.length === 1 ? "" : "s"}. Review and adjust before
           drafting.
         </p>
-      </div>
+      </header>
+
+      <ScopeBadge draftId={draft.id} scope={draft.scope} editable />
 
       <ol className="space-y-3">
         {items.map((item, i) => (
           <li
             key={item.localId}
-            className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950"
+            className="group rounded-lg border border-line bg-elev-1/60 p-4 backdrop-blur-sm transition-colors hover:border-line-2"
           >
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                Question {i + 1}
+              <span className="font-display text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+                Topic{" "}
+                <span className="ml-1 font-mono text-ink-2">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
               </span>
               <button
                 type="button"
                 onClick={() =>
                   setItems((xs) => xs.filter((x) => x.localId !== item.localId))
                 }
-                className="text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
+                className="font-display text-[10px] font-medium uppercase tracking-[0.14em] text-ink-4 opacity-0 transition-all hover:text-danger group-hover:opacity-100"
               >
                 Remove
               </button>
             </div>
-            <textarea
+            <Textarea
               value={item.text}
               onChange={(e) =>
                 setItems((xs) =>
@@ -86,47 +119,70 @@ export function ParsedView({ draft }: { draft: DraftRow }) {
                 )
               }
               rows={Math.max(2, Math.min(8, item.text.split("\n").length + 1))}
-              className="block w-full resize-y rounded border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+              className="!bg-elev-2 text-sm leading-relaxed"
             />
           </li>
         ))}
       </ol>
 
       <div className="flex items-center justify-between gap-3">
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={() =>
             setItems((xs) => [...xs, { localId: nextId(), text: "" }])
           }
-          className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
         >
-          + Add question
-        </button>
-        <div className="flex items-center gap-3 text-sm">
+          + Add topic
+        </Button>
+        <div className="flex items-center gap-3 text-xs">
           {savedAt && !dirty && !error && (
-            <span className="text-zinc-500">
+            <span className="font-mono text-ink-4">
               Saved {savedAt.toLocaleTimeString()}
             </span>
           )}
-          {error && <span className="text-red-600 dark:text-red-400">{error}</span>}
-          <button
+          {error && <span className="text-danger">{error}</span>}
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={onSave}
             disabled={pending || !dirty}
-            className="rounded-md bg-zinc-900 px-3 py-1.5 font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {pending ? "Saving…" : "Save changes"}
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="rounded-md border border-dashed border-zinc-300 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-        Drafting kickoff and per-question agent runs land in the next phase.
-        For now, save your edited question list and the row stays in{" "}
-        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs dark:bg-zinc-900">
-          parsed
-        </code>
-        .
+      {/* Launch research */}
+      <div className="relative overflow-hidden rounded-lg border border-line bg-elev-1/60 p-5 backdrop-blur-sm">
+        <div className="absolute inset-x-0 top-0 h-px brand-gradient opacity-60" />
+        <div className="flex items-center justify-between gap-4">
+          <div className="max-w-xl">
+            <Eyebrow className="mb-1.5">Step 03 — Research</Eyebrow>
+            <p className="text-sm leading-relaxed text-ink-2">
+              Each topic gets a search plan, parallel researchers, and an
+              architect synthesis. You&apos;ll review the capability maps before
+              drafting.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => setResearching(true)}
+            disabled={pending || dirty || items.length === 0}
+            title={
+              dirty
+                ? "Save your changes first"
+                : items.length === 0
+                  ? "Add at least one topic"
+                  : undefined
+            }
+          >
+            Start research →
+          </Button>
+        </div>
       </div>
     </div>
   );

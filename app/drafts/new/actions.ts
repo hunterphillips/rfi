@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { run } from "@openai/agents";
 import { createClient } from "@/lib/supabase/server";
 import { parserAgent } from "@/lib/agents/parser";
+import { scopeAgent } from "@/lib/agents/scope";
 import { extractDocumentText } from "@/lib/parse-document";
-import type { DraftQuestion } from "@/lib/types";
+import type { DraftTopic, Scope } from "@/lib/types";
 
 export type NewDraftState =
   | { status: "idle" }
@@ -52,23 +53,37 @@ export async function createDraft(
     return { status: "error", message: "Paste an RFI or upload a file." };
   }
 
-  let parsed;
-  try {
-    const result = await run(parserAgent, inputText);
-    parsed = result.finalOutput;
-  } catch (e) {
-    return {
-      status: "error",
-      message: e instanceof Error ? e.message : "Parser failed.",
-    };
-  }
+  // Run Parser and Scope extractor in parallel. Parser failure aborts;
+  // Scope failure is swallowed (downstream tolerates null scope).
+  const [parserResult, scopeResult] = await Promise.allSettled([
+    run(parserAgent, inputText),
+    run(scopeAgent, inputText),
+  ]);
 
-  if (!parsed || parsed.questions.length === 0) {
+  if (parserResult.status === "rejected") {
     return {
       status: "error",
       message:
-        "No questions detected. The input may not be a valid RFI document.",
+        parserResult.reason instanceof Error
+          ? parserResult.reason.message
+          : "Parser failed.",
     };
+  }
+
+  const parsed = parserResult.value.finalOutput;
+  if (!parsed || parsed.topics.length === 0) {
+    return {
+      status: "error",
+      message:
+        "No topics detected. The input may not be a valid RFI document.",
+    };
+  }
+
+  let scope: Scope | null = null;
+  if (scopeResult.status === "fulfilled" && scopeResult.value.finalOutput) {
+    scope = scopeResult.value.finalOutput;
+  } else if (scopeResult.status === "rejected") {
+    console.warn("[createDraft] scope extractor failed:", scopeResult.reason);
   }
 
   const supabase = await createClient();
@@ -80,10 +95,14 @@ export async function createDraft(
     return { status: "error", message: "Not signed in." };
   }
 
-  const questions: DraftQuestion[] = parsed.questions.map((q, i) => ({
+  const topics: DraftTopic[] = parsed.topics.map((q, i) => ({
     index: i,
     text: q.text,
     status: "pending",
+    plan: [],
+    research: [],
+    capability_map: null,
+    feedback_history: [],
     content: null,
     sources: [],
   }));
@@ -94,7 +113,8 @@ export async function createDraft(
       owner_id: user.id,
       title: parsed.title,
       input_text: inputText,
-      questions,
+      topics,
+      scope,
       status: "parsed",
     })
     .select("id")
