@@ -1,4 +1,4 @@
-# R4
+# RFX
 
 Internal IPC tool for drafting RFx responses (RFI / RFP / RFQ / RFB) with an agent workflow. RFIs are the current focus; the architecture is designed to extend to the other three.
 

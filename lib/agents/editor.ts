@@ -1,6 +1,9 @@
 import { Agent } from "@openai/agents";
 import { z } from "zod";
+import { hashPrompt } from "./_hash";
 import { loadIpcProfile } from "./_profile";
+
+export const EDITOR_MODEL = "gpt-5";
 
 export const EditorOutputSchema = z.object({
   rewrites: z
@@ -26,15 +29,15 @@ export const EditorOutputSchema = z.object({
 
 export type EditorOutput = z.infer<typeof EditorOutputSchema>;
 
-export async function makeEditor(): Promise<
-  Agent<unknown, typeof EditorOutputSchema>
-> {
+export type EditorHandle = {
+  agent: Agent<unknown, typeof EditorOutputSchema>;
+  promptHash: string;
+  model: string;
+};
+
+export async function makeEditor(): Promise<EditorHandle> {
   const profile = await loadIpcProfile();
-  return new Agent({
-    name: "RFI Editor",
-    model: "gpt-5",
-    outputType: EditorOutputSchema,
-    instructions: `You are the editor for an RFI response drafted by multiple per-topic agents. Your job is voice and tone harmonization.
+  const instructions = `You are the editor for an RFI response drafted by multiple per-topic agents. Your job is voice and tone harmonization.
 
 Edit each topic response so the full document reads as a single, consistent piece:
 - Same vocabulary for repeated concepts.
@@ -49,6 +52,14 @@ Return one rewrite per input topic, keyed by the same \`index\`.
 
 --- IPC CAPABILITY PROFILE ---
 ${profile}
---- END PROFILE ---`,
+--- END PROFILE ---`;
+
+  const agent = new Agent({
+    name: "RFI Editor",
+    model: EDITOR_MODEL,
+    outputType: EditorOutputSchema,
+    instructions,
   });
+
+  return { agent, promptHash: hashPrompt(instructions), model: EDITOR_MODEL };
 }

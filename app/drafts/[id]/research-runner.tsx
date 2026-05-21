@@ -333,7 +333,7 @@ function ResearchDisplay({
           )}
         </div>
 
-        <div className="rounded-lg border border-line bg-elev-1/60 p-4">
+        <div className="rounded-lg border border-line bg-elev-1 p-4">
           <ProgressRail
             done={done}
             total={total}
@@ -350,13 +350,13 @@ function ResearchDisplay({
       </ol>
 
       {phase === "error" && errorMsg && (
-        <div className="rounded-lg border border-[rgba(224,123,123,0.3)] bg-[rgba(224,123,123,0.06)] p-4 text-sm text-danger">
+        <div className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
           {errorMsg}
         </div>
       )}
 
       {phase === "done" && (
-        <div className="relative overflow-hidden rounded-lg border border-[rgba(39,182,129,0.3)] bg-[rgba(39,182,129,0.05)] p-4 text-sm text-ink">
+        <div className="relative overflow-hidden rounded-lg border border-emerald/30 bg-emerald/10 p-4 text-sm text-ink">
           <div className="absolute inset-x-0 top-0 h-px brand-gradient" />
           <span className="brand-text-gradient font-display font-semibold uppercase tracking-[0.14em]">
             Research complete.
@@ -370,7 +370,7 @@ function ResearchDisplay({
 
 function ResearchTopicCard({ topic }: { topic: Snapshot }) {
   return (
-    <li className="rounded-lg border border-line bg-elev-1/60 p-4 backdrop-blur-sm">
+    <li className="rounded-lg border border-line bg-elev-1 p-4 backdrop-blur-sm">
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="font-display text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
           Topic{" "}

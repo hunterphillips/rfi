@@ -1,0 +1,99 @@
+[
+  {
+    "id": "simple_questions",
+    "description": "Three plain technical questions, no noise.",
+    "input": "1. How does your platform support role-based access control?\n2. What integration patterns does the system support for upstream HR data?\n3. Describe the audit logging capabilities for configuration changes.",
+    "expected": [
+      "How does your platform support role-based access control?",
+      "What integration patterns does the system support for upstream HR data?",
+      "Describe the audit logging capabilities for configuration changes."
+    ]
+  },
+  {
+    "id": "labeled_bullets",
+    "description": "Labeled-bullet capability list (a) (b) (c). Tests the label cleanup rule.",
+    "input": "Provide a response to each of the following functional areas:\n\na) Student Profile Management — single record of academic, advising, and conduct history\nb) Employer Database Integration — bidirectional sync with external employer CRM\nc) Compliance Reporting — automated IPEDS and Title IV report generation",
+    "expected": [
+      "Student Profile Management — single record of academic, advising, and conduct history",
+      "Employer Database Integration — bidirectional sync with external employer CRM",
+      "Compliance Reporting — automated IPEDS and Title IV report generation"
+    ]
+  },
+  {
+    "id": "capability_statements",
+    "description": "Requirements phrased as capability statements, not questions.",
+    "input": "Managers must be able to build dashboards from incident, change, and problem data without engaging an admin.\n\nThe solution shall provide AI-assisted summarization of long incident timelines for handoff between shifts.\n\nEnd users need a unified mobile experience for submitting requests, approving tasks, and viewing knowledge.",
+    "expected": [
+      "Managers must be able to build dashboards from incident, change, and problem data without engaging an admin.",
+      "The solution shall provide AI-assisted summarization of long incident timelines for handoff between shifts.",
+      "End users need a unified mobile experience for submitting requests, approving tasks, and viewing knowledge."
+    ]
+  },
+  {
+    "id": "header_with_subitems",
+    "description": "A non-substantive section header introduces sub-items. Header should be skipped, sub-items extracted.",
+    "input": "## Technical Capabilities\n\nProvide a response to each example listed below:\n\n- Workflow automation for HR cases\n- Sentiment analysis on case interactions\n- Multilingual self-service portal",
+    "expected": [
+      "Workflow automation for HR cases",
+      "Sentiment analysis on case interactions",
+      "Multilingual self-service portal"
+    ]
+  },
+  {
+    "id": "exclude_vendor_info",
+    "description": "Vendor-overview content mixed with one technical question. Only the technical question should be extracted.",
+    "input": "## Company Overview\n\nProvide a one-page executive summary including your firm's mission, history since founding, and current size in headcount and revenue. Include bios of the proposed engagement lead and technical architect.\n\n## Technical\n\nHow does your solution handle integrations with legacy SIS via SFTP?",
+    "expected": [
+      "How does your solution handle integrations with legacy SIS via SFTP?"
+    ]
+  },
+  {
+    "id": "exclude_pricing",
+    "description": "Pricing schedule mixed with a technical capability requirement.",
+    "input": "## Pricing\n\nProvide a price structure broken out by module: platform licensing, per-user fees, professional services rate card, and any annual maintenance costs. Use the format in Attachment B.\n\n## Capabilities\n\nThe system shall support OAuth 2.0 single sign-on with the agency's existing identity provider.",
+    "expected": [
+      "The system shall support OAuth 2.0 single sign-on with the agency's existing identity provider."
+    ]
+  },
+  {
+    "id": "exclude_past_performance",
+    "description": "Past-performance ask mixed with a technical question.",
+    "input": "## Past Performance\n\nDescribe three engagements of similar scope and complexity delivered in the past five years. Include named clients, contract values, and references.\n\n## Technical\n\nWhat machine-learning capabilities does the platform provide for case categorization?",
+    "expected": [
+      "What machine-learning capabilities does the platform provide for case categorization?"
+    ]
+  },
+  {
+    "id": "exclude_submission_mechanics",
+    "description": "Submission mechanics + admin info mixed with two technical questions.",
+    "input": "## Submission Instructions\n\nProposals must be submitted as a single PDF, no more than 25 pages, named '<Vendor>_RFI_2026.pdf'. Direct questions to procurement@agency.gov by Friday at 5 PM ET.\n\n## Technical Questions\n\n1. How does the platform support offline access for field staff?\n2. Describe the disaster-recovery posture and RPO/RTO targets.",
+    "expected": [
+      "How does the platform support offline access for field staff?",
+      "Describe the disaster-recovery posture and RPO/RTO targets."
+    ]
+  },
+  {
+    "id": "sub_bullets_one_topic",
+    "description": "A single topic whose sub-bullets belong together. Should produce ONE entry with newlines, not three.",
+    "input": "Describe your platform's case-management capabilities, including:\n  - Intake from email, web, chat, and walk-in\n  - SLA tracking and escalation\n  - Knowledge-base suggestions during triage",
+    "expected": [
+      "Describe your platform's case-management capabilities, including:\n  - Intake from email, web, chat, and walk-in\n  - SLA tracking and escalation\n  - Knowledge-base suggestions during triage"
+    ]
+  },
+  {
+    "id": "fully_out_of_scope",
+    "description": "Input is entirely vendor/pricing/admin with no technical content. Should produce empty topics.",
+    "input": "## Vendor Information\n\nProvide your firm's name, headquarters, year founded, and number of employees. Include a list of relevant industry certifications.\n\n## Pricing\n\nSubmit your proposed pricing using the cost-volume template in Attachment B.\n\n## Submission\n\nResponses are due by 5 PM ET on June 1. Submit via the procurement portal.",
+    "expected": []
+  },
+  {
+    "id": "realistic_mixed",
+    "description": "Small realistic RFI with mixed sections — vendor + pricing + multiple technical topics.",
+    "input": "# RFI — ITSM Modernization\n\n## Section A: Vendor Information\nProvide your firm's overview and certifications.\n\n## Section B: Pricing\nFurnish pricing for the proposed solution in the format of Attachment C.\n\n## Section C: Technical Capabilities\n\n1. Describe how your platform supports incident, problem, and change management out of the box.\n2. How does your solution use AI/ML to reduce mean time to resolution?\n3. What native reporting and dashboard capabilities are available to non-developer end users?\n\n## Section D: Past Performance\nProvide references for three engagements of similar scope.",
+    "expected": [
+      "Describe how your platform supports incident, problem, and change management out of the box.",
+      "How does your solution use AI/ML to reduce mean time to resolution?",
+      "What native reporting and dashboard capabilities are available to non-developer end users?"
+    ]
+  }
+]

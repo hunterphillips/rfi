@@ -64,7 +64,7 @@ export default async function HomePage() {
 
         {/* List */}
         {drafts.length > 0 ? (
-          <ul className="rise rise-3 divide-y divide-line overflow-hidden rounded-lg border border-line bg-elev-1/60 backdrop-blur-sm">
+          <ul className="rise rise-3 divide-y divide-line overflow-hidden rounded-lg border border-line bg-elev-1 backdrop-blur-sm">
             {drafts.map((d) => (
               <DraftListRow key={d.id} draft={d} />
             ))}
@@ -124,7 +124,7 @@ function Stat({
 
 function EmptyState() {
   return (
-    <div className="rise rise-3 relative overflow-hidden rounded-lg border border-line bg-elev-1/40 px-6 py-20 text-center">
+    <div className="rise rise-3 relative overflow-hidden rounded-lg border border-line bg-elev-1 px-6 py-20 text-center">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_30%,rgba(65,187,113,0.08),transparent_60%)]" />
       <div className="mx-auto mb-5 flex w-fit items-center justify-center rounded-full border border-line-2 bg-elev-2 p-4">
         <BrandMark size={32} />

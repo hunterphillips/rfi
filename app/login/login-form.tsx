@@ -15,7 +15,7 @@ export function LoginForm() {
       <div className="rounded-lg border border-line bg-elev-1 p-5 text-sm">
         <div className="mb-2 flex items-center gap-2">
           <span className="inline-flex h-1.5 w-1.5 rounded-full bg-teal" />
-          <span className="font-display text-[10px] font-medium uppercase tracking-[0.18em] text-teal">
+          <span className="font-display text-[10px] font-medium uppercase tracking-[0.18em] text-accent">
             Link dispatched
           </span>
         </div>
@@ -54,7 +54,7 @@ export function LoginForm() {
       </Button>
 
       {state.status === "error" && (
-        <p className="rounded-md border border-[rgba(224,123,123,0.3)] bg-[rgba(224,123,123,0.06)] px-3 py-2 text-xs text-danger">
+        <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {state.message}
         </p>
       )}

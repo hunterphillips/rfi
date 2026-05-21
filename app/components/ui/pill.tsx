@@ -6,11 +6,11 @@ type Tone = "neutral" | "brand" | "warn" | "danger" | "info";
 const tones: Record<Tone, string> = {
   neutral: "border-line-2 bg-elev-2 text-ink-2",
   brand:
-    "border-[rgba(39,182,129,0.3)] bg-[rgba(39,182,129,0.08)] text-teal",
-  warn: "border-[rgba(214,163,88,0.3)] bg-[rgba(214,163,88,0.08)] text-warn",
+    "border-emerald/30 bg-emerald/10 text-accent",
+  warn: "border-warn/30 bg-warn/10 text-warn",
   danger:
-    "border-[rgba(224,123,123,0.3)] bg-[rgba(224,123,123,0.08)] text-danger",
-  info: "border-[rgba(107,162,196,0.3)] bg-[rgba(107,162,196,0.08)] text-info",
+    "border-danger/30 bg-danger/10 text-danger",
+  info: "border-info/30 bg-info/10 text-info",
 };
 
 export function Pill({

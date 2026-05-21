@@ -94,6 +94,7 @@ export type DraftRow = {
   scope: Scope | null;
   attached_context: { name: string; content: string }[];
   cancel_requested: boolean;
+  trace_id: string | null;
   created_at: string;
   updated_at: string;
 };

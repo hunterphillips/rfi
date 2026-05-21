@@ -7,7 +7,7 @@ export function AppHeader({
   userEmail?: string | null;
 }) {
   return (
-    <header className="relative z-20 border-b border-line bg-canvas/70 backdrop-blur-xl">
+    <header className="relative z-20 border-b border-line bg-canvas/80 backdrop-blur-xl">
       {/* hairline brand gradient at the very top — subtle thread */}
       <div className="brand-gradient h-[1px] w-full opacity-50" />
 

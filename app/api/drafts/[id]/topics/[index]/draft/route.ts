@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { withTrace, generateTraceId, run } from "@openai/agents";
 import { createClient } from "@/lib/supabase/server";
 import { makeDrafter } from "@/lib/agents/drafter";
+import { extractUsage, recordRun } from "@/lib/observability/record-run";
 import type { DraftRow, Source } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -75,6 +76,11 @@ export async function POST(
   const previousContent = topic.content ?? "";
   const previousSources = topic.sources;
 
+  const traceId = generateTraceId();
+  console.log(
+    `[topic-draft ${id}/${index}] View trace: https://platform.openai.com/traces/trace?trace_id=${traceId}`,
+  );
+
   const draftingTopics = draft.topics.map((t, i) =>
     i === index
       ? { ...t, status: "drafting" as const, content: null, sources: [] }
@@ -82,13 +88,12 @@ export async function POST(
   );
   await supabase
     .from("drafts")
-    .update({ topics: draftingTopics, cancel_requested: false })
+    .update({
+      topics: draftingTopics,
+      cancel_requested: false,
+      trace_id: traceId,
+    })
     .eq("id", id);
-
-  const traceId = generateTraceId();
-  console.log(
-    `[topic-draft ${id}/${index}] View trace: https://platform.openai.com/traces/trace?trace_id=${traceId}`,
-  );
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -143,8 +148,13 @@ export async function POST(
           );
         }
 
+        const tDrafter = Date.now();
         try {
-          const drafter = await makeDrafter({
+          const {
+            agent: drafter,
+            promptHash: drafterPromptHash,
+            model: drafterModel,
+          } = await makeDrafter({
             attached: draft.attached_context ?? [],
           });
           await withTrace(
@@ -155,6 +165,17 @@ export async function POST(
               });
               const out = result.finalOutput;
               if (!out) throw new Error("Empty drafter output");
+
+              void recordRun({
+                stage: "drafter",
+                draftId: id,
+                topicIndex: index,
+                model: drafterModel,
+                promptHash: drafterPromptHash,
+                traceId,
+                latencyMs: Date.now() - tDrafter,
+                ...extractUsage(result),
+              });
 
               const seen = new Set<string>();
               const dedup: Source[] = [];

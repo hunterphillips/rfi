@@ -17,22 +17,22 @@ const sizes: Record<Size, string> = {
 
 const variants: Record<Variant, string> = {
   primary: cn(
-    "text-black brand-gradient",
-    "hover:brightness-110 hover:shadow-[0_0_0_1px_rgba(39,182,129,0.45),0_10px_28px_-12px_rgba(39,182,129,0.6)]",
+    "text-black brand-gradient shadow-[0_1px_0_rgba(15,22,28,0.04),0_4px_14px_-6px_rgba(39,182,129,0.45)]",
+    "hover:brightness-105 hover:shadow-[0_0_0_1px_rgba(39,182,129,0.5),0_10px_24px_-10px_rgba(39,182,129,0.55)]",
     "active:brightness-95",
   ),
   secondary: cn(
-    "border border-line-3 bg-elev-1 text-ink",
+    "border border-line-2 bg-elev-1 text-ink shadow-[0_1px_0_rgba(15,22,28,0.02)]",
     "hover:bg-elev-2 hover:border-line-3",
   ),
   ghost: cn(
-    "text-ink-2 hover:text-ink hover:bg-elev-1",
+    "text-ink-2 hover:text-ink hover:bg-elev-2",
   ),
   danger: cn(
-    "border border-[rgba(224,123,123,0.3)] text-danger bg-transparent",
-    "hover:bg-[rgba(224,123,123,0.08)] hover:border-[rgba(224,123,123,0.5)]",
+    "border border-danger/40 text-danger bg-transparent",
+    "hover:bg-danger/10 hover:border-danger/60",
   ),
-  link: "text-teal hover:text-emerald underline underline-offset-4 decoration-teal/40 hover:decoration-teal",
+  link: "text-accent underline underline-offset-4 decoration-accent/40 hover:decoration-accent",
 };
 
 type Props = ComponentProps<"button"> & {

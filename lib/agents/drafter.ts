@@ -1,6 +1,9 @@
 import { Agent, tool } from "@openai/agents";
 import { z } from "zod";
+import { hashPrompt } from "./_hash";
 import { loadIpcProfile } from "./_profile";
+
+export const DRAFTER_MODEL = "gpt-5";
 
 export const DrafterOutputSchema = z.object({
   content: z
@@ -62,19 +65,20 @@ export type DrafterDeps = {
   attached?: { name: string; content: string }[];
 };
 
+export type DrafterHandle = {
+  agent: Agent<unknown, typeof DrafterOutputSchema>;
+  promptHash: string;
+  model: string;
+};
+
 export async function makeDrafter(
   deps: DrafterDeps = {},
-): Promise<Agent<unknown, typeof DrafterOutputSchema>> {
+): Promise<DrafterHandle> {
   const profile = await loadIpcProfile();
   const attached = deps.attached ?? [];
   const tools = attached.length ? [attachedContextTool(attached)] : [];
 
-  return new Agent({
-    name: "RFI Drafter",
-    model: "gpt-5",
-    outputType: DrafterOutputSchema,
-    tools,
-    instructions: `You compose a response to ONE topic from an RFI on behalf of IntegrityPro Consulting (IPC).
+  const instructions = `You compose a response to ONE topic from an RFI on behalf of IntegrityPro Consulting (IPC).
 
 You will be given:
 - The topic text.
@@ -95,6 +99,15 @@ Rules:
 
 --- IPC CAPABILITY PROFILE ---
 ${profile}
---- END PROFILE ---`,
+--- END PROFILE ---`;
+
+  const agent = new Agent({
+    name: "RFI Drafter",
+    model: DRAFTER_MODEL,
+    outputType: DrafterOutputSchema,
+    tools,
+    instructions,
   });
+
+  return { agent, promptHash: hashPrompt(instructions), model: DRAFTER_MODEL };
 }

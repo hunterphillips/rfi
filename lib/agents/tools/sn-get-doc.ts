@@ -10,6 +10,13 @@ import {
 
 type McpContent = { type: string; text: string };
 
+type RawDocChunk = {
+  chunk_index?: unknown;
+  title?: unknown;
+  content?: unknown;
+  [k: string]: unknown;
+};
+
 function parseSnGetDoc(content: McpContent[]): {
   title: string | null;
   content_preview: string;
@@ -19,24 +26,29 @@ function parseSnGetDoc(content: McpContent[]): {
     .map((c) => c.text)
     .join("\n");
 
-  // sn_get_doc returns markdown by default, sometimes wrapped in { title, content }
-  // JSON. Try parse-as-JSON first; on failure, treat the whole blob as markdown
-  // and pull a title from the first H1 if present.
-  let title: string | null = null;
-  let content_text = text;
+  // The MCP returns a top-level array of chunks when called with
+  // response_format: "json". Each chunk has { chunk_index, title, ..., content }.
+  // Assemble content in chunk_index order; title comes from chunk[0].
   try {
     const parsed: unknown = JSON.parse(text);
-    if (parsed && typeof parsed === "object") {
-      const obj = parsed as Record<string, unknown>;
-      if (typeof obj.content === "string") content_text = obj.content;
-      if (typeof obj.title === "string") title = obj.title;
+    if (Array.isArray(parsed)) {
+      const chunks = (parsed as RawDocChunk[]).slice().sort((a, b) => {
+        const ai = typeof a.chunk_index === "number" ? a.chunk_index : 0;
+        const bi = typeof b.chunk_index === "number" ? b.chunk_index : 0;
+        return ai - bi;
+      });
+      const title =
+        typeof chunks[0]?.title === "string" ? (chunks[0].title as string) : null;
+      const body = chunks
+        .map((c) => (typeof c.content === "string" ? c.content : ""))
+        .filter((s) => s.length > 0)
+        .join("\n\n");
+      return { title, content_preview: truncate(body, CONTENT_PREVIEW_MAX) };
     }
   } catch {
-    const h1 = content_text.match(/^#\s+(.+)$/m);
-    if (h1) title = h1[1].trim();
+    // fall through
   }
-
-  return { title, content_preview: truncate(content_text, CONTENT_PREVIEW_MAX) };
+  return { title: null, content_preview: truncate(text, CONTENT_PREVIEW_MAX) };
 }
 
 export function makeSnGetDocTool(mcp: MCPServer, bag?: ResearcherBag) {
@@ -50,18 +62,15 @@ export function makeSnGetDocTool(mcp: MCPServer, bag?: ResearcherBag) {
         .describe(
           "Full ServiceNow docs URL (https://www.servicenow.com/docs/...).",
         ),
-      response_format: z
-        .enum(["markdown", "html"])
-        .nullable()
-        .describe("Return format. Pass null for the server default (markdown)."),
     }),
-    async execute({ url, response_format }) {
+    async execute({ url }) {
       const blocked = checkDocFetchBudget(bag);
       if (blocked) return JSON.stringify(blocked);
 
-      const args: Record<string, unknown> = { url };
-      if (response_format != null) args.response_format = response_format;
-      const raw = (await mcp.callTool("sn_get_doc", args)) as McpContent[];
+      const raw = (await mcp.callTool("sn_get_doc", {
+        url,
+        response_format: "json",
+      })) as McpContent[];
       const { title, content_preview } = parseSnGetDoc(raw);
 
       if (bag) {

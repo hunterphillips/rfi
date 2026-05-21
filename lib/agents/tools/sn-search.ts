@@ -11,14 +11,12 @@ import {
 
 type McpContent = { type: string; text: string };
 
-type RawSearchPayload = {
-  results?: Array<{
-    title?: unknown;
-    url?: unknown;
-    snippet?: unknown;
-    content?: unknown;
-    [k: string]: unknown;
-  }>;
+type RawSearchItem = {
+  title?: unknown;
+  url?: unknown;
+  excerpt?: unknown;
+  snippet?: unknown;
+  content?: unknown;
   [k: string]: unknown;
 };
 
@@ -27,17 +25,26 @@ function parseSnSearchResults(content: McpContent[]): SearchResult[] {
     .filter((c) => c.type === "text")
     .map((c) => c.text)
     .join("\n");
-  let parsed: RawSearchPayload;
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(text) as RawSearchPayload;
+    parsed = JSON.parse(text);
   } catch {
     return [];
   }
-  const items = parsed.results ?? [];
+  // The MCP returns a top-level array of result objects when called with
+  // response_format: "json". Tolerate a { results: [...] } wrapper too.
+  const items: RawSearchItem[] = Array.isArray(parsed)
+    ? (parsed as RawSearchItem[])
+    : Array.isArray((parsed as { results?: unknown }).results)
+      ? ((parsed as { results: RawSearchItem[] }).results)
+      : [];
   return items.slice(0, 5).map((it, i) => ({
     title: String(it.title ?? "Untitled"),
     url: String(it.url ?? ""),
-    snippet: truncate(String(it.snippet ?? it.content ?? ""), SNIPPET_MAX),
+    snippet: truncate(
+      String(it.excerpt ?? it.snippet ?? it.content ?? ""),
+      SNIPPET_MAX,
+    ),
     rank: i + 1,
   }));
 }
@@ -69,7 +76,10 @@ export function makeSnSearchTool(mcp: MCPServer, bag?: ResearcherBag) {
       const blocked = checkSearchBudget(bag);
       if (blocked) return JSON.stringify(blocked);
 
-      const args: Record<string, unknown> = { query };
+      const args: Record<string, unknown> = {
+        query,
+        response_format: "json",
+      };
       if (bundle != null) args.bundle = bundle;
       if (n_results != null) args.n_results = n_results;
       const raw = (await mcp.callTool("sn_search_docs", args)) as McpContent[];

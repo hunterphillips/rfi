@@ -1,5 +1,12 @@
+import Image from "next/image";
 import Link from "next/link";
+import logoBanner from "@/public/logo-banner.png";
+import logoFull from "@/public/logo-full.png";
 
+/**
+ * The IPC "circuit-node" mark, drawn as inline SVG. Used in places where
+ * the wordmark would be redundant (empty states, decorative chrome).
+ */
 export function BrandMark({
   size = 32,
   className,
@@ -29,18 +36,8 @@ export function BrandMark({
           <stop offset="50%" stopColor="#41bb71" />
           <stop offset="100%" stopColor="#27b681" />
         </linearGradient>
-        <filter
-          id="ipc-mark-glow"
-          x="-20%"
-          y="-20%"
-          width="140%"
-          height="140%"
-        >
-          <feGaussianBlur stdDeviation="0.6" />
-        </filter>
       </defs>
 
-      {/* Connectors — multi-branch circuit */}
       <g
         stroke="url(#ipc-mark-gradient)"
         strokeWidth="1.6"
@@ -52,7 +49,6 @@ export function BrandMark({
         <path d="M14 15 Q14 22 18 22 L26 22" />
       </g>
 
-      {/* Colored circuit nodes */}
       <g>
         <circle cx="4" cy="8" r="2.4" fill="#8ec841" />
         <circle cx="14" cy="15" r="2.6" fill="#5cc060" />
@@ -60,7 +56,6 @@ export function BrandMark({
         <circle cx="26" cy="22" r="2.4" fill="#27b681" />
       </g>
 
-      {/* Gray decoy nodes from real mark */}
       <g opacity="0.55">
         <circle cx="20" cy="8" r="1.6" fill="#898989" />
         <circle cx="4" cy="22" r="1.6" fill="#898989" />
@@ -69,9 +64,14 @@ export function BrandMark({
   );
 }
 
+/**
+ * Header brand lockup — uses the official transparent banner PNG (the
+ * INTEGRITYPRO wordmark + circuit mark together) paired with a small
+ * product-name sublabel.
+ */
 export function BrandLockup({
   href = "/",
-  productLabel = "R4",
+  productLabel = "RFX",
 }: {
   href?: string;
   productLabel?: string;
@@ -79,36 +79,46 @@ export function BrandLockup({
   return (
     <Link
       href={href}
-      className="group inline-flex items-center gap-2.5 rounded-md py-1 transition-opacity hover:opacity-90"
-      aria-label="IntegrityPro RFx — home"
+      className="group inline-flex items-center gap-3 rounded-md py-1 transition-opacity hover:opacity-90"
+      aria-label={`IntegrityPro ${productLabel} — home`}
     >
-      <BrandMark size={28} />
-      <div className="flex items-baseline gap-2">
-        <span className="font-display text-[14px] font-semibold tracking-[0.18em] text-ink">
-          INTEGRITY<span className="brand-text-gradient">PRO</span>
-        </span>
-        <span className="hidden font-display text-[10px] font-medium uppercase tracking-[0.32em] text-ink-4 sm:inline">
-          / {productLabel}
-        </span>
-      </div>
+      <Image
+        src={logoBanner}
+        alt="IntegrityPro"
+        priority
+        placeholder="empty"
+        className="h-7 w-auto"
+      />
+      <span
+        aria-hidden="true"
+        className="hidden h-5 w-px bg-line-2 sm:inline-block"
+      />
+      <span className="hidden font-display text-[11px] font-medium uppercase tracking-[0.32em] text-ink-3 sm:inline">
+        {productLabel}
+      </span>
     </Link>
   );
 }
 
-export function BrandHero() {
+/**
+ * Login-screen hero — uses the full square corporate logo (with the
+ * "CONSULTING LLC™" mark) for maximum brand presence.
+ */
+export function BrandHero({ tagline = "RFX · Response Console" }: { tagline?: string }) {
   return (
-    <div className="flex flex-col items-center gap-4 text-center">
+    <div className="flex flex-col items-center gap-5 text-center">
       <div className="relative">
-        <div className="absolute inset-0 -z-10 rounded-full bg-[radial-gradient(circle,rgba(65,187,113,0.25),transparent_70%)] blur-2xl" />
-        <BrandMark size={64} />
+        <div className="absolute inset-0 -z-10 rounded-full bg-[radial-gradient(circle,rgba(65,187,113,0.18),transparent_65%)] blur-2xl" />
+        <Image
+          src={logoFull}
+          alt="IntegrityPro Consulting"
+          priority
+          placeholder="empty"
+          className="h-32 w-32"
+        />
       </div>
-      <div className="space-y-1.5">
-        <div className="font-display text-2xl font-semibold tracking-[0.18em] text-ink">
-          INTEGRITY<span className="brand-text-gradient">PRO</span>
-        </div>
-        <div className="font-display text-[10px] font-medium uppercase tracking-[0.4em] text-ink-3">
-          R4 · Response Console
-        </div>
+      <div className="font-display text-[10px] font-medium uppercase tracking-[0.4em] text-ink-3">
+        {tagline}
       </div>
     </div>
   );

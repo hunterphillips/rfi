@@ -22,8 +22,8 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IntegrityPro · R4",
-  description: "Internal R4 response drafting console for IntegrityPro.",
+  title: "IntegrityPro · RFX",
+  description: "Internal RFX response drafting console for IntegrityPro.",
 };
 
 export default function RootLayout({

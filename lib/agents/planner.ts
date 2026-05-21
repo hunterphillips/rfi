@@ -1,5 +1,6 @@
 import { Agent } from "@openai/agents";
 import { z } from "zod";
+import { hashPrompt } from "./_hash";
 
 export const SearchSourceSchema = z.enum(["sn_docs", "web"]);
 
@@ -36,11 +37,9 @@ export const SearchPlanSchema = z.object({
 export type SearchItem = z.infer<typeof SearchItemSchema>;
 export type SearchPlan = z.infer<typeof SearchPlanSchema>;
 
-export const plannerAgent = new Agent({
-  name: "RFI Search Planner",
-  model: "gpt-5-mini",
-  outputType: SearchPlanSchema,
-  instructions: `You produce a search plan for ONE RFI topic on behalf of an AI/ServiceNow consultancy.
+export const PLANNER_MODEL = "gpt-5-mini";
+
+const PLANNER_INSTRUCTIONS = `You produce a search plan for ONE RFI topic on behalf of an AI/ServiceNow consultancy.
 
 Your job: decide which searches a researcher needs to run to answer this topic well. You do NOT answer the topic or run searches yourself — you only emit the plan.
 
@@ -56,5 +55,13 @@ Rules:
 - Avoid overlapping queries — each search should return distinct evidence.
 - If the topic has clear sub-bullets, plan one search per sub-bullet (where each merits a search).
 - Don't plan a search just to "get more context" — every item must contribute a fact the answer will need.
-`,
+`;
+
+export const PLANNER_PROMPT_HASH = hashPrompt(PLANNER_INSTRUCTIONS);
+
+export const plannerAgent = new Agent({
+  name: "RFI Search Planner",
+  model: PLANNER_MODEL,
+  outputType: SearchPlanSchema,
+  instructions: PLANNER_INSTRUCTIONS,
 });

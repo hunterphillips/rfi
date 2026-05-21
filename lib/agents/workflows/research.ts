@@ -1,12 +1,21 @@
 import { run } from "@openai/agents";
-import { architectAgent } from "@/lib/agents/architect";
-import { plannerAgent, type SearchItem } from "@/lib/agents/planner";
+import { ARCHITECT_MODEL, ARCHITECT_PROMPT_HASH, architectAgent } from "@/lib/agents/architect";
 import {
+  PLANNER_MODEL,
+  PLANNER_PROMPT_HASH,
+  plannerAgent,
+  type SearchItem,
+} from "@/lib/agents/planner";
+import {
+  RESEARCHER_MODEL,
+  RESEARCHER_SN_PROMPT_HASH,
+  RESEARCHER_WEB_PROMPT_HASH,
   runResearcher,
   type ResearcherOutput,
   type ResearcherTelemetry,
 } from "@/lib/agents/researcher";
 import { makeSnDocsServer } from "@/lib/agents/tools/sn-docs";
+import { extractUsage, recordRun } from "@/lib/observability/record-run";
 import type {
   CapabilityMap,
   DraftTopic,
@@ -21,6 +30,10 @@ export type ResearchOptions = {
   scope?: Scope | null;
   signal?: AbortSignal;
   onEvent?: (e: ResearchEvent) => void;
+  /** When set, each agent stage records a row in `agent_runs` for observability. */
+  draftId?: string;
+  /** Forwarded to recordRun so a phase's rows share a trace id. */
+  traceId?: string;
 };
 
 const emptyEmit: (e: ResearchEvent) => void = () => {};
@@ -46,7 +59,16 @@ export async function runResearchWorkflow(
   try {
     await Promise.all(
       topics.map((topic) =>
-        researchOneTopic(topic, mcp, emit, opts.signal, undefined, opts.scope),
+        researchOneTopic(
+          topic,
+          mcp,
+          emit,
+          opts.signal,
+          undefined,
+          opts.scope,
+          opts.draftId,
+          opts.traceId,
+        ),
       ),
     );
   } finally {
@@ -79,7 +101,16 @@ export async function updateTopic(
   });
   await mcp.connect();
   try {
-    await researchOneTopic(topic, mcp, emit, opts.signal, feedback, opts.scope);
+    await researchOneTopic(
+      topic,
+      mcp,
+      emit,
+      opts.signal,
+      feedback,
+      opts.scope,
+      opts.draftId,
+      opts.traceId,
+    );
   } finally {
     try {
       await mcp.close();
@@ -96,6 +127,8 @@ async function researchOneTopic(
   signal?: AbortSignal,
   feedback?: string,
   scope?: Scope | null,
+  draftId?: string,
+  traceId?: string,
 ): Promise<void> {
   const tq = Date.now();
 
@@ -110,15 +143,40 @@ async function researchOneTopic(
   // 1. Plan
   emit({ type: "planner.started", index: topic.index });
   let plan: { items: SearchItem[] };
+  const tPlanner = Date.now();
   try {
     const result = await run(plannerAgent, plannerInput, { signal });
     if (!result.finalOutput || result.finalOutput.items.length === 0) {
       throw new Error("Planner produced empty plan");
     }
     plan = result.finalOutput;
+    if (draftId) {
+      void recordRun({
+        stage: "planner",
+        draftId,
+        topicIndex: topic.index,
+        model: PLANNER_MODEL,
+        promptHash: PLANNER_PROMPT_HASH,
+        traceId,
+        latencyMs: Date.now() - tPlanner,
+        ...extractUsage(result),
+      });
+    }
   } catch (e) {
     topic.status = "failed";
     const message = e instanceof Error ? e.message : "planner error";
+    if (draftId) {
+      void recordRun({
+        stage: "planner",
+        draftId,
+        topicIndex: topic.index,
+        model: PLANNER_MODEL,
+        promptHash: PLANNER_PROMPT_HASH,
+        traceId,
+        latencyMs: Date.now() - tPlanner,
+        error: message,
+      });
+    }
     emit({ type: "planner.error", index: topic.index, message });
     return;
   }
@@ -147,9 +205,41 @@ async function researchOneTopic(
         query: item.query,
         source: item.source,
       });
+      const tR = Date.now();
+      const promptHash =
+        item.source === "sn_docs"
+          ? RESEARCHER_SN_PROMPT_HASH
+          : RESEARCHER_WEB_PROMPT_HASH;
       try {
-        const { output, telemetry } = await runResearcher(item, mcp);
+        const { output, telemetry, tokensIn, tokensOut } = await runResearcher(
+          item,
+          mcp,
+        );
         if (!output) throw new Error("Researcher produced no output");
+        if (draftId) {
+          void recordRun({
+            stage: "researcher",
+            draftId,
+            topicIndex: topic.index,
+            model: RESEARCHER_MODEL,
+            promptHash,
+            traceId,
+            tokensIn,
+            tokensOut,
+            latencyMs: Date.now() - tR,
+            salvaged: telemetry.salvaged,
+            budgetUsed: {
+              searches_used: telemetry.searches_used,
+              doc_fetches_used: telemetry.doc_fetches_used,
+            },
+            rawTelemetry: {
+              r_index: rIndex,
+              source: item.source,
+              tool_calls: telemetry.tool_calls,
+              max_turns: telemetry.max_turns,
+            },
+          });
+        }
         emit({
           type: "researcher.complete",
           topic_index: topic.index,
@@ -162,6 +252,19 @@ async function researchOneTopic(
         return { item, output, telemetry } satisfies Successful;
       } catch (e) {
         const message = e instanceof Error ? e.message : "researcher error";
+        if (draftId) {
+          void recordRun({
+            stage: "researcher",
+            draftId,
+            topicIndex: topic.index,
+            model: RESEARCHER_MODEL,
+            promptHash,
+            traceId,
+            latencyMs: Date.now() - tR,
+            error: message,
+            rawTelemetry: { r_index: rIndex, source: item.source },
+          });
+        }
         emit({
           type: "researcher.error",
           topic_index: topic.index,
@@ -202,13 +305,38 @@ async function researchOneTopic(
   });
   const architectInput = formatArchitectInput(topic.text, successful, feedback);
   let cap: CapabilityMap;
+  const tArch = Date.now();
   try {
     const result = await run(architectAgent, architectInput, { signal });
     if (!result.finalOutput) throw new Error("Architect produced no output");
     cap = result.finalOutput;
+    if (draftId) {
+      void recordRun({
+        stage: "architect",
+        draftId,
+        topicIndex: topic.index,
+        model: ARCHITECT_MODEL,
+        promptHash: ARCHITECT_PROMPT_HASH,
+        traceId,
+        latencyMs: Date.now() - tArch,
+        ...extractUsage(result),
+      });
+    }
   } catch (e) {
     topic.status = "failed";
     const message = e instanceof Error ? e.message : "architect error";
+    if (draftId) {
+      void recordRun({
+        stage: "architect",
+        draftId,
+        topicIndex: topic.index,
+        model: ARCHITECT_MODEL,
+        promptHash: ARCHITECT_PROMPT_HASH,
+        traceId,
+        latencyMs: Date.now() - tArch,
+        error: message,
+      });
+    }
     emit({ type: "architect.error", index: topic.index, message });
     return;
   }

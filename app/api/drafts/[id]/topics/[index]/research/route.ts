@@ -6,7 +6,7 @@ import type { ResearchEvent } from "@/lib/agents/workflows/events";
 import type { DraftRow } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 export async function POST(
   req: NextRequest,
@@ -58,6 +58,11 @@ export async function POST(
   const previous = topics[index];
   topics[index] = topic;
 
+  const traceId = generateTraceId();
+  console.log(
+    `[topic-research ${id}/${index}] View trace: https://platform.openai.com/traces/trace?trace_id=${traceId}`,
+  );
+
   await supabase
     .from("drafts")
     .update({
@@ -65,13 +70,9 @@ export async function POST(
         i === index ? { ...t, status: "planning" as const } : t,
       ),
       cancel_requested: false,
+      trace_id: traceId,
     })
     .eq("id", id);
-
-  const traceId = generateTraceId();
-  console.log(
-    `[topic-research ${id}/${index}] View trace: https://platform.openai.com/traces/trace?trace_id=${traceId}`,
-  );
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -119,6 +120,8 @@ export async function POST(
             await updateTopic(topic, feedback, {
               scope: draft.scope,
               signal: ac.signal,
+              draftId: id,
+              traceId,
               onEvent: (e) => {
                 send(e);
                 if (

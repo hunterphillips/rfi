@@ -1,5 +1,6 @@
 import { Agent } from "@openai/agents";
 import { z } from "zod";
+import { hashPrompt } from "./_hash";
 
 export const ScopeOutputSchema = z.object({
   products: z
@@ -31,11 +32,9 @@ export const ScopeOutputSchema = z.object({
 
 export type ScopeOutput = z.infer<typeof ScopeOutputSchema>;
 
-export const scopeAgent = new Agent({
-  name: "RFI Scope Extractor",
-  model: "gpt-5-mini",
-  outputType: ScopeOutputSchema,
-  instructions: `You extract ServiceNow scope from an RFI. The output is used downstream to inform research planning.
+export const SCOPE_MODEL = "gpt-5-mini";
+
+const SCOPE_INSTRUCTIONS = `You extract ServiceNow scope from an RFI. The output is used downstream to inform research planning.
 
 Your job: identify which ServiceNow products / modules / releases the RFI is scoped to. Where the topic extractor pulls **what** the RFI is asking, you pull **where** — the product surface in scope.
 
@@ -47,5 +46,13 @@ Rules:
   - "RFI does not specify ServiceNow scope." (when nothing relevant is mentioned)
 - If the RFI is about a non-ServiceNow system (e.g. a Workday/Salesforce replacement that doesn't reference ServiceNow), return empty products + null version + a one-sentence summary noting that.
 - Be conservative. If a product is named only in passing as an example or comparable system rather than as in-scope, don't list it.
-`,
+`;
+
+export const SCOPE_PROMPT_HASH = hashPrompt(SCOPE_INSTRUCTIONS);
+
+export const scopeAgent = new Agent({
+  name: "RFI Scope Extractor",
+  model: SCOPE_MODEL,
+  outputType: ScopeOutputSchema,
+  instructions: SCOPE_INSTRUCTIONS,
 });

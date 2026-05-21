@@ -6,7 +6,7 @@ import type { DraftEvent } from "@/lib/agents/workflows/events";
 import type { DraftRow, DraftTopic } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 export async function POST(
   _req: NextRequest,
@@ -46,18 +46,23 @@ export async function POST(
 
   const topics: DraftTopic[] = draft.topics.map((t) => ({ ...t }));
 
-  const { error: startErr } = await supabase
-    .from("drafts")
-    .update({ status: "drafting", topics, cancel_requested: false })
-    .eq("id", id);
-  if (startErr) {
-    return new Response(`Failed to start: ${startErr.message}`, { status: 500 });
-  }
-
   const traceId = generateTraceId();
   console.log(
     `[draft ${id}] View trace: https://platform.openai.com/traces/trace?trace_id=${traceId}`,
   );
+
+  const { error: startErr } = await supabase
+    .from("drafts")
+    .update({
+      status: "drafting",
+      topics,
+      cancel_requested: false,
+      trace_id: traceId,
+    })
+    .eq("id", id);
+  if (startErr) {
+    return new Response(`Failed to start: ${startErr.message}`, { status: 500 });
+  }
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -107,6 +112,8 @@ export async function POST(
             await runDraftWorkflow(eligibleSubset, {
               attached: draft.attached_context ?? [],
               signal: ac.signal,
+              draftId: id,
+              traceId,
               onEvent: (e) => {
                 send(e);
                 if (

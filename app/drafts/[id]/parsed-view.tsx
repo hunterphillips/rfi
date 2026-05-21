@@ -88,7 +88,7 @@ export function ParsedView({ draft }: { draft: DraftRow }) {
         {items.map((item, i) => (
           <li
             key={item.localId}
-            className="group rounded-lg border border-line bg-elev-1/60 p-4 backdrop-blur-sm transition-colors hover:border-line-2"
+            className="group rounded-lg border border-line bg-elev-1 p-4 backdrop-blur-sm transition-colors hover:border-line-2"
           >
             <div className="mb-2 flex items-center justify-between">
               <span className="font-display text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
@@ -156,7 +156,7 @@ export function ParsedView({ draft }: { draft: DraftRow }) {
       </div>
 
       {/* Launch research */}
-      <div className="relative overflow-hidden rounded-lg border border-line bg-elev-1/60 p-5 backdrop-blur-sm">
+      <div className="relative overflow-hidden rounded-lg border border-line bg-elev-1 p-5 backdrop-blur-sm">
         <div className="absolute inset-x-0 top-0 h-px brand-gradient opacity-60" />
         <div className="flex items-center justify-between gap-4">
           <div className="max-w-xl">

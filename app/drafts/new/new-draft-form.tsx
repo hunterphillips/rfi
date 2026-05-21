@@ -30,7 +30,7 @@ export function NewDraftForm() {
 
       {/* Input surface */}
       {mode === "paste" ? (
-        <div className="rounded-lg border border-line bg-elev-1/60 backdrop-blur-sm">
+        <div className="rounded-lg border border-line bg-elev-1 backdrop-blur-sm">
           <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
             <span className="font-display text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
               RFI source · pasted
@@ -48,7 +48,7 @@ export function NewDraftForm() {
           />
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-line-3 bg-elev-1/40 px-6 py-10 text-center">
+        <div className="rounded-lg border border-dashed border-line-3 bg-elev-1 px-6 py-10 text-center">
           <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-line-2 bg-elev-2">
             <UploadGlyph />
           </div>
@@ -87,7 +87,7 @@ export function NewDraftForm() {
       </div>
 
       {state.status === "error" && (
-        <p className="rounded-md border border-[rgba(224,123,123,0.3)] bg-[rgba(224,123,123,0.06)] px-3 py-2 text-xs text-danger">
+        <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {state.message}
         </p>
       )}

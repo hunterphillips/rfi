@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { CapabilityMapEditor } from "./capability-map-editor";
 import { DraftRunner } from "./draft-runner";
 import { EditableTitle } from "./editable-title";
 import { ScopeBadge } from "./scope-badge";
@@ -10,13 +11,7 @@ import { Eyebrow } from "@/app/components/ui/card";
 import { Textarea } from "@/app/components/ui/input";
 import { StatusPill } from "@/app/components/ui/status-pill";
 import { ProgressRail } from "@/app/components/ui/progress-rail";
-import type {
-  DraftRow,
-  DraftTopic,
-  CapabilityMap,
-  PlanItem,
-  Source,
-} from "@/lib/types";
+import type { DraftRow, DraftTopic, PlanItem, Source } from "@/lib/types";
 
 type Mode = "review" | "drafting" | "topic-research";
 
@@ -136,7 +131,7 @@ function ReviewView({
 
       <ScopeBadge draftId={draft.id} scope={draft.scope} editable />
 
-      <div className="rounded-lg border border-line bg-elev-1/60 p-4">
+      <div className="rounded-lg border border-line bg-elev-1 p-4">
         <ProgressRail
           done={approved}
           total={total - failed}
@@ -149,6 +144,7 @@ function ReviewView({
         {draft.topics.map((t) => (
           <TopicReviewCard
             key={t.index}
+            draftId={draft.id}
             topic={t}
             busy={busy}
             onApproveToggle={() => toggleApprove(t.index, t.status)}
@@ -158,12 +154,12 @@ function ReviewView({
       </ol>
 
       {error && (
-        <p className="rounded-md border border-[rgba(224,123,123,0.3)] bg-[rgba(224,123,123,0.06)] px-3 py-2 text-xs text-danger">
+        <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {error}
         </p>
       )}
 
-      <div className="relative overflow-hidden rounded-lg border border-line bg-elev-1/60 p-5 backdrop-blur-sm">
+      <div className="relative overflow-hidden rounded-lg border border-line bg-elev-1 p-5 backdrop-blur-sm">
         <div className="absolute inset-x-0 top-0 h-px brand-gradient opacity-60" />
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -195,11 +191,13 @@ function ReviewView({
 }
 
 function TopicReviewCard({
+  draftId,
   topic,
   busy,
   onApproveToggle,
   onReResearch,
 }: {
+  draftId: string;
   topic: DraftTopic;
   busy: boolean;
   onApproveToggle: () => void;
@@ -207,7 +205,7 @@ function TopicReviewCard({
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   return (
-    <li className="overflow-hidden rounded-lg border border-line bg-elev-1/60 backdrop-blur-sm">
+    <li className="overflow-hidden rounded-lg border border-line bg-elev-1 backdrop-blur-sm">
       <div className="border-b border-line px-5 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -227,7 +225,11 @@ function TopicReviewCard({
 
       <div className="px-5 py-4">
         {topic.capability_map ? (
-          <CapabilityMapView map={topic.capability_map} />
+          <CapabilityMapEditor
+            draftId={draftId}
+            topicIndex={topic.index}
+            initialMap={topic.capability_map}
+          />
         ) : (
           <p className="text-sm italic text-ink-4">
             No capability map. Re-research to retry.
@@ -279,97 +281,6 @@ function TopicReviewCard({
         )}
       </div>
     </li>
-  );
-}
-
-function CapabilityMapView({ map }: { map: CapabilityMap }) {
-  return (
-    <div className="space-y-5 text-sm">
-      <section>
-        <Eyebrow>Architecture narrative</Eyebrow>
-        <p className="mt-1.5 leading-relaxed text-ink-2">
-          {map.architecture_narrative}
-        </p>
-      </section>
-
-      <section>
-        <Eyebrow>Features</Eyebrow>
-        <ul className="mt-2 space-y-2.5">
-          {map.features.map((f, i) => (
-            <li
-              key={i}
-              className="rounded-md border border-line bg-elev-2/40 p-3"
-            >
-              <p className="font-display text-[13px] font-semibold tracking-tight text-ink">
-                {f.name}
-              </p>
-              <p className="mt-0.5 text-ink-2">{f.purpose}</p>
-              <a
-                href={f.source}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1.5 block truncate font-mono text-[11px] text-teal hover:text-emerald hover:underline"
-              >
-                {f.source}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {map.components.length > 0 && (
-        <section>
-          <Eyebrow>Components</Eyebrow>
-          <ul className="mt-1.5 space-y-1 text-ink-2">
-            {map.components.map((c, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="mt-2 inline-block h-1 w-1 shrink-0 rounded-full bg-emerald" />
-                <span>{c}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {map.open_questions.length > 0 && (
-        <section>
-          <Eyebrow>Open questions</Eyebrow>
-          <ul className="mt-1.5 space-y-1 text-ink-2">
-            {map.open_questions.map((q, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="mt-2 inline-block h-1 w-1 shrink-0 rounded-full bg-warn" />
-                <span>{q}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {map.sources.length > 0 && (
-        <details className="group">
-          <summary className="cursor-pointer list-none font-display text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3 transition-colors hover:text-ink">
-            <span className="mr-1.5 inline-block transition-transform group-open:rotate-90">
-              ›
-            </span>
-            Sources · {map.sources.length}
-          </summary>
-          <ul className="mt-2 space-y-1 border-l border-line pl-4">
-            {map.sources.map((s, i) => (
-              <li key={i}>
-                <a
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-[11px] text-teal hover:text-emerald hover:underline"
-                >
-                  {s.title}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-    </div>
   );
 }
 
@@ -530,7 +441,7 @@ function TopicResearchRunner({
       )}
 
       {phase === "running" && (
-        <div className="rounded-lg border border-line bg-elev-1/60 p-4">
+        <div className="rounded-lg border border-line bg-elev-1 p-4">
           <ProgressRail
             done={progress.completed}
             total={Math.max(progress.plan.length, 1)}
@@ -545,7 +456,7 @@ function TopicResearchRunner({
       )}
 
       {phase === "done" && (
-        <div className="relative overflow-hidden rounded-lg border border-[rgba(39,182,129,0.3)] bg-[rgba(39,182,129,0.05)] p-4 text-sm">
+        <div className="relative overflow-hidden rounded-lg border border-emerald/30 bg-emerald/10 p-4 text-sm">
           <div className="absolute inset-x-0 top-0 h-px brand-gradient" />
           <span className="brand-text-gradient font-display font-semibold uppercase tracking-[0.14em]">
             Done.
@@ -555,7 +466,7 @@ function TopicResearchRunner({
       )}
 
       {phase === "error" && errorMsg && (
-        <div className="rounded-lg border border-[rgba(224,123,123,0.3)] bg-[rgba(224,123,123,0.06)] p-4 text-sm text-danger">
+        <div className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
           {errorMsg}
           <button
             type="button"

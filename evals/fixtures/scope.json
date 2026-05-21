@@ -1,0 +1,86 @@
+[
+  {
+    "id": "explicit_scope",
+    "description": "RFI explicitly names products and release.",
+    "input": "## Background\n\nThe agency is modernizing its IT service management platform on ServiceNow ITSM. The proposed solution must run on the Washington release and incorporate Now Assist for ITSM for case summarization.",
+    "expected": {
+      "products": [{ "name": "ITSM" }, { "name": "Now Assist for ITSM" }],
+      "version": "Washington",
+      "summary": "RFI is scoped to ITSM on the Washington release with Now Assist for ITSM."
+    }
+  },
+  {
+    "id": "single_product_no_version",
+    "description": "One ServiceNow module mentioned; no release named.",
+    "input": "We are evaluating ServiceNow Customer Service Management to replace our incumbent case-handling system. The RFI focuses on contact-center workflows and omnichannel intake.",
+    "expected": {
+      "products": [{ "name": "CSM" }],
+      "version": null,
+      "summary": "RFI is scoped to CSM with a focus on contact-center workflows."
+    }
+  },
+  {
+    "id": "multiple_products",
+    "description": "Multiple distinct ServiceNow modules in scope.",
+    "input": "This RFI covers three ServiceNow product areas: ITSM for incident and change, ITOM for discovery and event management, and HRSD for employee service center workflows.",
+    "expected": {
+      "products": [
+        { "name": "ITSM" },
+        { "name": "ITOM" },
+        { "name": "HRSD" }
+      ],
+      "version": null,
+      "summary": "RFI is scoped to ITSM, ITOM, and HRSD."
+    }
+  },
+  {
+    "id": "non_servicenow_replacement",
+    "description": "RFI is about replacing a Workday system and does not reference ServiceNow at all. Should abstain.",
+    "input": "The State of Example is seeking proposals to replace its existing Workday HCM with a modern employee experience platform. The replacement system must support recruiting, onboarding, time/attendance, payroll, and learning management.",
+    "expected": {
+      "products": [],
+      "version": null,
+      "summary": "RFI does not reference ServiceNow."
+    }
+  },
+  {
+    "id": "passing_mention_comparable",
+    "description": "Mentions ServiceNow only as a comparable product, not as the target platform. Conservative: don't list.",
+    "input": "The agency is evaluating a modern ticketing solution comparable to ServiceNow or Jira Service Management. The selected platform need not be one of these specific products; the RFI is platform-agnostic.",
+    "expected": {
+      "products": [],
+      "version": null,
+      "summary": "RFI does not specify ServiceNow scope — ServiceNow is mentioned only as a comparable product."
+    }
+  },
+  {
+    "id": "release_named_implicit_itsm",
+    "description": "Release explicitly named; ITSM context strongly implied.",
+    "input": "Submissions should reference behavior on the Vancouver release. The relevant subject area is incident, problem, and change workflows for our IT operations group.",
+    "expected": {
+      "products": [{ "name": "ITSM" }],
+      "version": "Vancouver",
+      "summary": "RFI is scoped to ITSM on the Vancouver release."
+    }
+  },
+  {
+    "id": "performance_analytics_yokon",
+    "description": "Specific module + specific release.",
+    "input": "This RFI evaluates dashboard and reporting capabilities using ServiceNow Performance Analytics on the Yokon release.",
+    "expected": {
+      "products": [{ "name": "Performance Analytics" }],
+      "version": "Yokon",
+      "summary": "RFI is scoped to Performance Analytics on Yokon."
+    }
+  },
+  {
+    "id": "vague_modernization",
+    "description": "Vague 'modernize ITSM' without naming products explicitly. Conservative: list ITSM, no version.",
+    "input": "The agency intends to modernize its IT service management capability. Proposals should describe ITSM functionality including incident, problem, and change management.",
+    "expected": {
+      "products": [{ "name": "ITSM" }],
+      "version": null,
+      "summary": "RFI is scoped to ITSM with a focus on incident, problem, and change management."
+    }
+  }
+]

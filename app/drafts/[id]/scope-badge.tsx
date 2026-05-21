@@ -36,7 +36,7 @@ export function ScopeBadge({
 
   if (scope === null || !hasContent) {
     return (
-      <div className="group flex items-center gap-3 rounded-lg border border-line bg-elev-1/40 px-4 py-2.5">
+      <div className="group flex items-center gap-3 rounded-lg border border-line bg-elev-1 px-4 py-2.5">
         <Eyebrow>ServiceNow scope</Eyebrow>
         <span className="flex-1 text-xs text-ink-4">— none detected</span>
         {editable && (
@@ -53,7 +53,7 @@ export function ScopeBadge({
   }
 
   return (
-    <div className="group rounded-lg border border-line bg-elev-1/40 px-4 py-3">
+    <div className="group rounded-lg border border-line bg-elev-1 px-4 py-3">
       <div className="mb-2 flex items-center gap-2">
         <Eyebrow>ServiceNow scope</Eyebrow>
         {scope.version && <Pill tone="info">{scope.version}</Pill>}
@@ -159,14 +159,14 @@ function ScopeEditor({
             {products.map((p, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(39,182,129,0.3)] bg-[rgba(39,182,129,0.08)] px-2 py-0.5 font-display text-[11px] font-medium uppercase tracking-[0.1em] text-teal"
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald/30 bg-emerald/10 px-2 py-0.5 font-display text-[11px] font-medium uppercase tracking-[0.1em] text-accent"
               >
                 {p}
                 <button
                   type="button"
                   onClick={() => removeProduct(i)}
                   disabled={pending}
-                  className="text-teal/70 hover:text-danger"
+                  className="text-accent/80 hover:text-danger"
                   aria-label={`Remove ${p}`}
                 >
                   ×

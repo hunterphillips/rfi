@@ -6,38 +6,40 @@
   --font-display: var(--font-chakra), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
-  /* Surfaces */
-  --color-canvas: #0a0c0d;
-  --color-elev-1: #111417;
-  --color-elev-2: #161a1e;
-  --color-elev-3: #1d2228;
+  /* Surfaces (light) */
+  --color-canvas: #fafbfc;
+  --color-elev-1: #ffffff;
+  --color-elev-2: #f3f5f7;
+  --color-elev-3: #e9ecef;
 
-  /* Lines */
-  --color-line: rgba(255, 255, 255, 0.06);
-  --color-line-2: rgba(255, 255, 255, 0.1);
-  --color-line-3: rgba(255, 255, 255, 0.18);
+  /* Lines (dark hairlines on light surfaces) */
+  --color-line: rgba(15, 22, 28, 0.08);
+  --color-line-2: rgba(15, 22, 28, 0.12);
+  --color-line-3: rgba(15, 22, 28, 0.2);
 
-  /* Ink */
-  --color-ink: #e8e9ea;
-  --color-ink-2: #b8babc;
-  --color-ink-3: #898989;
-  --color-ink-4: #5a5d60;
-  --color-ink-5: #3d4044;
+  /* Ink (dark text on light bg) */
+  --color-ink: #0a0c0d;
+  --color-ink-2: #3a3d40;
+  --color-ink-3: #6e7174;
+  --color-ink-4: #a4a7aa;
+  --color-ink-5: #c6c9cc;
 
-  /* IPC brand */
+  /* IPC brand — unchanged across themes */
   --color-lime: #8ec841;
   --color-grass: #66c15a;
   --color-emerald: #41bb71;
   --color-teal: #27b681;
+  /* Darker accent — for body-text-on-tinted-bg and links (AA contrast on light) */
+  --color-accent: #1d7a4a;
 
-  /* Semantic */
-  --color-danger: #e07b7b;
-  --color-warn: #d6a358;
-  --color-info: #6ba2c4;
+  /* Semantic — tuned darker for AA contrast on light bg */
+  --color-danger: #c44545;
+  --color-warn: #a87523;
+  --color-info: #1d6a96;
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
@@ -53,7 +55,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Atmospheric backdrop — subtle brand-tinted radial glows */
+/* Atmospheric backdrop — soft brand-tinted radial glows */
 body::before {
   content: "";
   position: fixed;
@@ -61,8 +63,8 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(900px 500px at 8% -8%, rgba(142, 200, 65, 0.06), transparent 55%),
-    radial-gradient(700px 400px at 100% 110%, rgba(39, 182, 129, 0.05), transparent 55%);
+    radial-gradient(900px 500px at 8% -8%, rgba(142, 200, 65, 0.1), transparent 55%),
+    radial-gradient(700px 400px at 100% 110%, rgba(39, 182, 129, 0.08), transparent 55%);
 }
 
 /* Faint grid texture for technical feel */
@@ -73,8 +75,8 @@ body::after {
   pointer-events: none;
   z-index: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    linear-gradient(rgba(15, 22, 28, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 22, 28, 0.04) 1px, transparent 1px);
   background-size: 64px 64px;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 80%);
 }
@@ -89,12 +91,14 @@ body::after {
   );
 }
 
+/* For text: darker greens for AA contrast on light surfaces. The
+   showy lime→teal lives on `brand-gradient` (decorative fills only). */
 @utility brand-text-gradient {
   background: linear-gradient(
     90deg,
-    var(--color-lime) 0%,
-    var(--color-emerald) 50%,
-    var(--color-teal) 100%
+    var(--color-emerald) 0%,
+    var(--color-teal) 50%,
+    var(--color-accent) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
@@ -114,12 +118,12 @@ body::after {
   :where(input, textarea, select, button, a):focus-visible {
     outline: 1px solid var(--color-teal);
     outline-offset: 2px;
-    box-shadow: 0 0 0 4px rgba(39, 182, 129, 0.18);
+    box-shadow: 0 0 0 4px rgba(39, 182, 129, 0.22);
   }
 
   ::selection {
-    background: rgba(65, 187, 113, 0.3);
-    color: #fff;
+    background: rgba(65, 187, 113, 0.28);
+    color: var(--color-ink);
   }
 }
 
@@ -135,7 +139,7 @@ body::after {
 .md-prose h4 {
   font-family: var(--font-display);
   letter-spacing: 0.005em;
-  color: #fff;
+  color: var(--color-ink);
   margin-top: 1.4em;
   margin-bottom: 0.5em;
   font-weight: 600;
@@ -186,7 +190,7 @@ body::after {
   font-size: 0.85em;
 }
 .md-prose strong {
-  color: #fff;
+  color: var(--color-ink);
   font-weight: 600;
 }
 .md-prose em {
@@ -199,7 +203,7 @@ body::after {
   border: 1px solid var(--color-line);
   padding: 0.1em 0.4em;
   border-radius: 4px;
-  color: var(--color-lime);
+  color: var(--color-accent);
 }
 .md-prose pre {
   background: var(--color-elev-2);
@@ -216,14 +220,14 @@ body::after {
   color: var(--color-ink);
 }
 .md-prose a {
-  color: var(--color-teal);
+  color: var(--color-accent);
   text-decoration: underline;
-  text-decoration-color: rgba(39, 182, 129, 0.4);
+  text-decoration-color: rgba(29, 122, 74, 0.4);
   text-underline-offset: 3px;
   transition: text-decoration-color 0.15s;
 }
 .md-prose a:hover {
-  text-decoration-color: var(--color-teal);
+  text-decoration-color: var(--color-accent);
 }
 .md-prose blockquote {
   border-left: 2px solid var(--color-emerald);
@@ -272,7 +276,7 @@ body::after {
   border: 2px solid var(--color-canvas);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-ink-5);
+  background: var(--color-ink-4);
 }
 
 /* Pulse for in-flight indicators */

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { DraftTopic, Scope } from "@/lib/types";
+import type { CapabilityMap, DraftTopic, Scope, Source } from "@/lib/types";
 
 export async function saveQuestions(
   draftId: string,
@@ -121,6 +121,75 @@ export async function updateScope(
   const { error: updateErr } = await supabase
     .from("drafts")
     .update({ scope: normalized })
+    .eq("id", draftId);
+  if (updateErr) return { ok: false, message: updateErr.message };
+
+  revalidatePath(`/drafts/${draftId}`);
+  return { ok: true };
+}
+
+export async function updateCapabilityMap(
+  draftId: string,
+  topicIndex: number,
+  map: CapabilityMap,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const supabase = await createClient();
+  const { data: existing, error: fetchErr } = await supabase
+    .from("drafts")
+    .select("topics, status")
+    .eq("id", draftId)
+    .single<{ topics: DraftTopic[]; status: string }>();
+  if (fetchErr || !existing) {
+    return { ok: false, message: fetchErr?.message ?? "Draft not found." };
+  }
+  if (existing.status !== "researched") {
+    return {
+      ok: false,
+      message: `Capability map can only be edited while the draft is in 'researched' (currently '${existing.status}').`,
+    };
+  }
+  if (topicIndex < 0 || topicIndex >= existing.topics.length) {
+    return { ok: false, message: "Topic index out of range." };
+  }
+
+  // Normalize: keep only well-formed entries; prune sources to those still
+  // cited by a remaining feature.source; dedupe sources by URL.
+  const features = map.features.filter(
+    (f) =>
+      typeof f?.name === "string" &&
+      f.name.trim().length > 0 &&
+      typeof f.source === "string",
+  );
+  const components = map.components.filter(
+    (c) => typeof c === "string" && c.trim().length > 0,
+  );
+  const open_questions = map.open_questions.filter(
+    (q) => typeof q === "string" && q.trim().length > 0,
+  );
+  const citedUrls = new Set(features.map((f) => f.source));
+  const seenUrls = new Set<string>();
+  const sources: Source[] = [];
+  for (const s of map.sources) {
+    if (!s?.url || !citedUrls.has(s.url) || seenUrls.has(s.url)) continue;
+    seenUrls.add(s.url);
+    sources.push({ title: s.title ?? s.url, url: s.url });
+  }
+
+  const normalized: CapabilityMap = {
+    architecture_narrative: (map.architecture_narrative ?? "").trim(),
+    features,
+    components,
+    open_questions,
+    sources,
+  };
+
+  const nextTopics = existing.topics.map((t, i) =>
+    i === topicIndex ? { ...t, capability_map: normalized } : t,
+  );
+
+  const { error: updateErr } = await supabase
+    .from("drafts")
+    .update({ topics: nextTopics })
     .eq("id", draftId);
   if (updateErr) return { ok: false, message: updateErr.message };
 

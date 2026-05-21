@@ -6,7 +6,7 @@ import type { ResearchEvent } from "@/lib/agents/workflows/events";
 import type { DraftRow, DraftTopic } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 export async function POST(
   _req: NextRequest,
@@ -48,18 +48,23 @@ export async function POST(
     sources: [],
   }));
 
-  const { error: startErr } = await supabase
-    .from("drafts")
-    .update({ status: "researching", topics, cancel_requested: false })
-    .eq("id", id);
-  if (startErr) {
-    return new Response(`Failed to start: ${startErr.message}`, { status: 500 });
-  }
-
   const traceId = generateTraceId();
   console.log(
     `[research ${id}] View trace: https://platform.openai.com/traces/trace?trace_id=${traceId}`,
   );
+
+  const { error: startErr } = await supabase
+    .from("drafts")
+    .update({
+      status: "researching",
+      topics,
+      cancel_requested: false,
+      trace_id: traceId,
+    })
+    .eq("id", id);
+  if (startErr) {
+    return new Response(`Failed to start: ${startErr.message}`, { status: 500 });
+  }
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -106,6 +111,8 @@ export async function POST(
             await runResearchWorkflow(topics, {
               scope: draft.scope,
               signal: ac.signal,
+              draftId: id,
+              traceId,
               onEvent: (e) => {
                 send(e);
                 // Pipeline mutates topics in place; persist on key milestones.

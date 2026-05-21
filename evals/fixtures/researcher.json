@@ -1,0 +1,152 @@
+[
+  {
+    "id": "sn_now_assist_summarization",
+    "description": "Direct sn_docs query about Now Assist case-summarization features.",
+    "input": {
+      "query": "Now Assist for ITSM AI case summarization features",
+      "source": "sn_docs",
+      "reason": "Need feature scope for AI-driven case summarization in ITSM.",
+      "bundle": null
+    },
+    "expected": [
+      "Now Assist for ITSM",
+      "AI summarization or case summarization",
+      "incident or case lifecycle context"
+    ]
+  },
+  {
+    "id": "sn_change_management",
+    "description": "Mainstream ServiceNow change management topic.",
+    "input": {
+      "query": "ServiceNow change management approval workflow normal standard emergency",
+      "source": "sn_docs",
+      "reason": "Need to describe out-of-the-box change-management approval flows.",
+      "bundle": null
+    },
+    "expected": [
+      "change management process",
+      "approval workflow or approval policies",
+      "change types (normal, standard, emergency)"
+    ]
+  },
+  {
+    "id": "sn_predictive_intelligence",
+    "description": "Predictive Intelligence categorization model.",
+    "input": {
+      "query": "ServiceNow Predictive Intelligence classification model training",
+      "source": "sn_docs",
+      "reason": "Need to explain ML-based incident categorization.",
+      "bundle": null
+    },
+    "expected": [
+      "Predictive Intelligence",
+      "classification or categorization",
+      "model training or solution definition"
+    ]
+  },
+  {
+    "id": "sn_discovery_agentless",
+    "description": "ITOM Discovery — agentless probes.",
+    "input": {
+      "query": "ServiceNow Discovery agentless probes patterns horizontal pattern",
+      "source": "sn_docs",
+      "reason": "Need to describe ITOM Discovery approach for asset/CI population.",
+      "bundle": null
+    },
+    "expected": [
+      "Discovery",
+      "agentless or MID Server",
+      "probes or patterns"
+    ]
+  },
+  {
+    "id": "sn_performance_analytics",
+    "description": "Performance Analytics scorecards / indicators.",
+    "input": {
+      "query": "Performance Analytics scorecards indicators dashboards",
+      "source": "sn_docs",
+      "reason": "Need to describe reporting capabilities for non-developer users.",
+      "bundle": null
+    },
+    "expected": [
+      "Performance Analytics",
+      "indicators or scorecards",
+      "dashboards or visualizations"
+    ]
+  },
+  {
+    "id": "sn_hrsd_lifecycle_fuzzy",
+    "description": "Fuzzier HRSD employee-lifecycle event automation question.",
+    "input": {
+      "query": "ServiceNow employee lifecycle event automation onboarding offboarding",
+      "source": "sn_docs",
+      "reason": "Need to describe HR lifecycle event automation in HRSD.",
+      "bundle": null
+    },
+    "expected": [
+      "HRSD or HR Service Delivery",
+      "lifecycle events (onboarding/offboarding)",
+      "automation, triggers, or workflows"
+    ]
+  },
+  {
+    "id": "sn_with_bundle",
+    "description": "sn_docs query with a bundle hint.",
+    "input": {
+      "query": "incident management dashboards out-of-the-box",
+      "source": "sn_docs",
+      "reason": "Need ITSM dashboards on Vancouver specifically.",
+      "bundle": "vancouver-it-service-management"
+    },
+    "expected": [
+      "incident management",
+      "dashboards or reports",
+      "ITSM"
+    ]
+  },
+  {
+    "id": "sn_integration_hub_fuzzy",
+    "description": "Fuzzy phrasing of Integration Hub / spokes question.",
+    "input": {
+      "query": "Integration Hub spokes connect external systems no-code workflow",
+      "source": "sn_docs",
+      "reason": "Need to describe integration patterns with external systems.",
+      "bundle": null
+    },
+    "expected": [
+      "Integration Hub",
+      "spokes or pre-built actions",
+      "external system integration"
+    ]
+  },
+  {
+    "id": "web_oauth_pkce",
+    "description": "Mainstream web topic — OAuth flow with PKCE.",
+    "input": {
+      "query": "OAuth 2.0 authorization code flow PKCE single page application",
+      "source": "web",
+      "reason": "Need general OAuth/PKCE description for SSO integration discussion.",
+      "bundle": null
+    },
+    "expected": [
+      "OAuth 2.0 authorization code flow",
+      "PKCE (Proof Key for Code Exchange)",
+      "client authentication or SPA context"
+    ]
+  },
+  {
+    "id": "web_section_508_fuzzy",
+    "description": "Fuzzier web topic — Section 508 conformance for SaaS.",
+    "input": {
+      "query": "Section 508 conformance accessibility SaaS platform VPAT",
+      "source": "web",
+      "reason": "Need accessibility-conformance background for federal RFI.",
+      "bundle": null
+    },
+    "expected": [
+      "Section 508 conformance",
+      "WCAG or accessibility standards",
+      "VPAT or vendor accessibility documentation"
+    ]
+  }
+]

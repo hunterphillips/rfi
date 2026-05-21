@@ -9,7 +9,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-lg border border-line bg-elev-1/80 backdrop-blur-sm",
+        "rounded-lg border border-line bg-elev-1 backdrop-blur-sm",
         interactive &&
           "transition-colors hover:border-line-2 hover:bg-elev-1",
         className,

@@ -1,5 +1,6 @@
 import { Agent } from "@openai/agents";
 import { z } from "zod";
+import { hashPrompt } from "./_hash";
 
 export const ArchitectSourceSchema = z.object({
   title: z.string().describe("Display title of the source."),
@@ -55,11 +56,9 @@ export const CapabilityMapSchema = z.object({
 
 export type CapabilityMap = z.infer<typeof CapabilityMapSchema>;
 
-export const architectAgent = new Agent({
-  name: "RFI Architect",
-  model: "gpt-5",
-  outputType: CapabilityMapSchema,
-  instructions: `You synthesize research findings into a capability map for ONE topic of an RFI.
+export const ARCHITECT_MODEL = "gpt-5";
+
+const ARCHITECT_INSTRUCTIONS = `You synthesize research findings into a capability map for ONE topic of an RFI.
 
 You will be given:
 - The topic text.
@@ -76,5 +75,13 @@ Rules:
 - \`sources\` is the deduped union of URLs cited across \`features\`, with their titles.
 - Do NOT write customer-facing prose. This is an internal artifact. No marketing language, no IPC voice.
 - Do NOT speculate beyond the research. If the evidence doesn't support a claim, drop it or surface it as an open question.
-`,
+`;
+
+export const ARCHITECT_PROMPT_HASH = hashPrompt(ARCHITECT_INSTRUCTIONS);
+
+export const architectAgent = new Agent({
+  name: "RFI Architect",
+  model: ARCHITECT_MODEL,
+  outputType: CapabilityMapSchema,
+  instructions: ARCHITECT_INSTRUCTIONS,
 });

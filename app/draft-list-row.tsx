@@ -34,7 +34,7 @@ export function DraftListRow({ draft }: { draft: Row }) {
   }
 
   return (
-    <li className="group relative flex items-center gap-4 px-5 py-4 transition-colors hover:bg-elev-2/60">
+    <li className="group relative flex items-center gap-4 px-5 py-4 transition-colors hover:bg-elev-2">
       {/* leading marker line */}
       <span className="absolute inset-y-0 left-0 w-px scale-y-0 brand-gradient transition-transform duration-300 group-hover:scale-y-100" />
 

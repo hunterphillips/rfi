@@ -1,8 +1,8 @@
-# R4
+# RFX
 
 Internal IPC tool for drafting RFx responses (RFI / RFP / RFQ / RFB) with an agent workflow. RFI is the current focus. A user pastes/uploads an RFI; agents extract topics + ServiceNow scope, plan + research + synthesize a capability map per topic, and (after architect review) draft + harmonize a Markdown response that can be reviewed, commented on, assigned, and approved.
 
-See [README.md](./README.md) for the architecture overview. The active build plan lives at `.claude/plans/phases.md` (local-only).
+See [README.md](./README.md) for the architecture overview. Active build plans live under `.claude/plans/` (local-only).
 
 ## Stack
 
@@ -17,16 +17,50 @@ See [README.md](./README.md) for the architecture overview. The active build pla
 
 ## Structure
 
-- `app/` — Next.js app router (auth pages, drafts pages, API routes)
-- `app/api/drafts/[id]/draft/` — SSE route that runs all Drafters + Editor for a fresh draft
-- `app/api/drafts/[id]/questions/[index]/draft/` — SSE route for per-question regenerate (with optional reviewer feedback)
-- `app/auth/callback/` — magic-link redirect handler
-- `lib/agents/` — Agent definitions: `parser.ts`, `drafter.ts`, `editor.ts`; tool wrappers under `lib/agents/tools/`
-- `lib/supabase/` — Supabase clients: `client.ts` (browser), `server.ts` (server), `middleware.ts` (proxy helper)
-- `lib/ipc-profile.md` — IPC capability profile injected into agent system prompts; edit by PR
-- `proxy.ts` — Next 16 proxy file (formerly `middleware.ts`); refreshes session + gates routes
-- `scripts/` — local diagnostic scripts (`diag-mcp.ts`, `diag-drafter.ts`); run with `pnpm dlx tsx --env-file=.env.local scripts/<name>.ts`
-- `_reference/` — local-only RFI examples (gitignored)
+- `app/` — Next.js app router. Auth pages, drafts pages, API routes.
+- `app/api/drafts/[id]/research/` — SSE; phase 1 (Planner → parallel Researchers → Architect, per topic).
+- `app/api/drafts/[id]/topics/[index]/research/` — SSE; re-research one topic with optional `{ feedback }`.
+- `app/api/drafts/[id]/topics/[index]/approve/` — toggle a topic's `approved | researched` status (no agents).
+- `app/api/drafts/[id]/draft/` — SSE; phase 2 (per-topic Drafter from capability_map → Editor across all). Requires all eligible topics to be `approved`.
+- `app/api/drafts/[id]/topics/[index]/draft/` — SSE; per-topic re-draft from existing capability_map; optional `{ feedback }`.
+- `app/api/drafts/[id]/cancel/` — flips `cancel_requested`; both phase routes poll this.
+- `app/auth/callback/` — magic-link redirect handler.
+- `lib/agents/` — agent definitions. Each exports a `*_MODEL` constant + a `*_PROMPT_HASH` (sha256[:16] of the instructions template, used for telemetry rollups).
+  - `parser.ts` (Topic Extractor, gpt-5-mini)
+  - `scope.ts` (Scope Extractor, gpt-5-mini)
+  - `planner.ts` (Search Planner, gpt-5-mini)
+  - `researcher.ts` (Researcher + Salvager, gpt-5-mini, with `errorHandlers: { maxTurns }` salvage path). `runResearcher(item, mcp, opts?)` accepts an optional `{ budget }` override (used by the budget sweep eval) and returns `{ output, telemetry, tokensIn?, tokensOut? }`.
+  - `architect.ts` (Capability Map synthesizer, gpt-5, no tools, no IPC profile)
+  - `drafter.ts` / `editor.ts` (gpt-5; inject IPC profile via `_profile.ts`). `makeDrafter()` and `makeEditor()` return `{ agent, promptHash, model }` — the hash is computed post-profile-interpolation so profile edits change it.
+  - `_hash.ts` — `hashPrompt(template)` helper.
+  - `_profile.ts` (shared IPC profile loader; only Drafter + Editor use it)
+  - `stream-utils.ts` (SDK event-shape helpers — legacy from monolithic Drafter; reuseable)
+- `lib/agents/tools/` — tool factories:
+  - `evidence.ts` (typed `EvidenceItem`, `ToolBudget`, `ResearcherBag`; per-Researcher search/doc-fetch budgets enforced in wrappers)
+  - `web-search.ts`, `sn-search.ts`, `sn-get-doc.ts` (each takes a `ResearcherBag?` and returns compact `{ ok, results } | { ok: false, error }` JSON to the model)
+  - `sn-docs.ts` (sn-docs MCP server factory)
+- `lib/agents/workflows/` — orchestration (Anthropic taxonomy: predefined LLM-orchestrated code paths). Both workflows accept `{ draftId?, traceId? }` in opts; when set, each agent stage calls `recordRun()` to insert an `agent_runs` row.
+  - `research.ts` — `runResearchWorkflow(topics, opts)` + `updateTopic(topic, feedback, opts)`
+  - `draft.ts` — `runDraftWorkflow(topics, opts)`
+  - `events.ts` — `ResearchEvent` / `DraftEvent` discriminated unions
+- `lib/evals/` — eval harness shared infra:
+  - `types.ts` (`EvalCase`, `EvalResult`, `EvalSummary`, `JudgeScore`)
+  - `judge.ts` (gpt-5 judges: `judgeParser`, `judgeScope`, `judgeResearcher`; each returns `{ scores, notes }`)
+  - `runner.ts` (`runEval(stage, fixtureFile, runFn, judgeFn)`)
+- `lib/observability/record-run.ts` — `recordRun(input)` inserts an `agent_runs` row (best-effort, swallows + logs errors). `extractUsage(result)` pulls `tokensIn`/`tokensOut` from `result.runContext.usage`.
+- `lib/supabase/` — Supabase clients: `client.ts` (browser), `server.ts` (server), `middleware.ts` (proxy helper).
+- `lib/ipc-profile.md` — IPC capability profile; injected into Drafter + Editor prompts only (Architect deliberately doesn't get it).
+- `lib/types.ts` — `DraftRow`, `DraftTopic`, `Scope`, `CapabilityMap`, `PlanItem`, `ResearchSummary`, `FeedbackEntry`, status enums.
+- `proxy.ts` — Next 16 proxy file (formerly `middleware.ts`); refreshes session + gates routes.
+- `scripts/` — local diagnostic + eval scripts. `diag-*` are service-role / single-shot probes; `eval-*` run fixture suites with gpt-5 judges and print aggregates.
+  - `diag-{research,draft,mcp,schema}.ts` — workflow + MCP + schema smoke
+  - `diag-{agent-runs,agent-runs-query,drafts-columns,sn-search,sn-get-doc}.ts` — observability + MCP-shape probes added during Tier 2
+  - `eval-{parser,scope,researcher}.ts` — per-stage evals against `evals/fixtures/*.json`
+  - `eval-budget-sweep.ts` — runs researcher fixtures across budget variants; comparison table
+- `supabase/migrations/` — applied via Supabase dashboard SQL editor (MCP OAuth is broken at time of writing).
+- `evals/fixtures/` — hand-crafted eval fixtures (`parser.json`, `scope.json`, `researcher.json`).
+- `agent-lab/` — separate Python sandbox; converged design that the parent ported back from. Diverges deliberately on terminology and SDK shape. Useful as historical reference.
+- `_reference/` — local-only RFI examples (gitignored).
 
 ## Development
 
@@ -34,7 +68,7 @@ See [README.md](./README.md) for the architecture overview. The active build pla
 
 ```bash
 pnpm install
-cp .env.local.example .env.local   # fill keys; Supabase URL + publishable key are already populated
+cp .env.local.example .env.local   # fill keys
 ```
 
 ### Running
@@ -55,42 +89,88 @@ pnpm build               # full build
 
 For UI changes, start the dev server and exercise the feature in the browser before declaring a phase done. The Playwright MCP is available for that.
 
+### Diag scripts
+
+```bash
+pnpm dlx tsx --env-file=.env.local scripts/diag-research.ts --topic "..."
+pnpm dlx tsx --env-file=.env.local scripts/diag-research.ts <fixture-path>
+pnpm dlx tsx --env-file=.env.local scripts/diag-draft.ts <state.json>
+pnpm dlx tsx --env-file=.env.local scripts/diag-mcp.ts
+pnpm dlx tsx --env-file=.env.local scripts/diag-schema.ts
+pnpm dlx tsx --env-file=.env.local scripts/diag-agent-runs.ts        # post-migration smoke
+pnpm dlx tsx --env-file=.env.local scripts/diag-agent-runs-query.ts  # rollup of recent runs
+```
+
+### Evals (gpt-5 judges; real API cost)
+
+```bash
+pnpm dlx tsx --env-file=.env.local scripts/eval-parser.ts
+pnpm dlx tsx --env-file=.env.local scripts/eval-scope.ts
+pnpm dlx tsx --env-file=.env.local scripts/eval-researcher.ts
+pnpm dlx tsx --env-file=.env.local scripts/eval-budget-sweep.ts      # ~35-40 min; teeing to a log is a good idea
+```
+
 ## Conventions
 
-- **Proxy, not middleware.** Next 16 deprecated `middleware.ts`. The root file is `proxy.ts` and exports `proxy`. The session-refresh helper in `lib/supabase/middleware.ts` keeps the legacy name for parity with Supabase docs but is just a helper module.
+- **Proxy, not middleware.** Next 16 deprecated `middleware.ts`. Root file is `proxy.ts` and exports `proxy`. The session-refresh helper in `lib/supabase/middleware.ts` keeps the legacy name for parity with Supabase docs.
 - **Server-side Supabase client is async.** `createClient()` from `lib/supabase/server.ts` returns a Promise — always `await` it.
-- **Auth gate.** `proxy.ts` redirects unauthenticated requests to `/login` (preserving `?next=`) and authenticated requests away from `/login`. `/login` and `/auth/*` are the public paths.
-- **Domain restriction.** Sign-in is restricted to `@integritypro.com` both in the login server action (UX) and via a DB trigger on `auth.users` (hard gate). The allowed domain is env-configurable: `ALLOWED_EMAIL_DOMAIN`.
-- **pnpm build allowlist.** `pnpm-workspace.yaml` sets `allowBuilds: { sharp: true, unrs-resolver: true }`. pnpm regenerates this block on install — don't strip it.
-- **SSE handlers keep running after the client disconnects.** This is intentional: long Drafter/Editor runs should complete server-side even if the user navigates away. Do **not** tie an `AbortController` to a React effect cleanup — React 19 StrictMode double-invokes effects in dev and will cancel every fetch immediately. See `app/drafts/[id]/draft-runner.tsx`.
-- **MCP tool budgets via `RunContext`.** To bound how many times the agent can call a specific tool per run, wrap it as a `tool()`, store the counter on `RunContext.context`, and pass `{ context: { ... } }` to `run()`. The original MCP tool is hidden via `toolFilter: { blockedToolNames: [...] }` on the MCP server. Pattern: `lib/agents/tools/sn-search.ts`.
-- **Adding a new app-router API route requires a `next dev` restart.** Turbopack lazy-compiles routes on first hit, but in Next 16 routes added while the dev server is running sometimes never register. If `[draft] route module loaded` (or your route's first log) doesn't fire on a request, restart `pnpm dev`.
+- **Auth gate.** `proxy.ts` redirects unauthenticated requests to `/login` (preserving `?next=`) and authenticated requests away from `/login`. `/login` and `/auth/*` are public.
+- **Domain restriction.** Sign-in restricted to `@integritypro.com` both in the login server action (UX) and via a DB trigger on `auth.users` (hard gate). Env-configurable: `ALLOWED_EMAIL_DOMAIN`.
+- **pnpm build allowlist.** `pnpm-workspace.yaml` sets `allowBuilds: { sharp: true, unrs-resolver: true }`. Don't strip it.
+- **SSE handlers keep running after the client disconnects.** Long Researcher/Drafter runs should complete server-side even if the user navigates away. Do NOT tie an `AbortController` to a React effect cleanup — React 19 StrictMode double-invokes effects in dev and will cancel every fetch immediately. See `app/drafts/[id]/draft-runner.tsx` for the pattern.
+- **Tool budgets via `ResearcherBag`, NOT `RunContext.context`.** The old monolithic-Drafter `ToolBudgetContext` pattern was deliberately removed during the agent-lab port. Per-Researcher budgets live in a closure-bound `ResearcherBag` (`lib/agents/tools/evidence.ts`); wrappers receive `bag?: ResearcherBag` at construction time. Defaults: `DEFAULT_SN_BUDGET = { maxSearches: 2, maxDocFetches: 1 }`, `DEFAULT_WEB_BUDGET = { maxSearches: 2, maxDocFetches: 0 }`.
+- **Tool returns are normalized + truncated.** Every wrapper returns `{ ok: true, results: [...] }` or `{ ok: false, error }` to the model. Snippets capped at `SNIPPET_MAX = 400`, doc previews at `CONTENT_PREVIEW_MAX = 4000`. Raw upstream payloads stay on the typed `EvidenceItem` for downstream salvager / future evals.
+- **Salvager is a fallback, not the primary control.** `errorHandlers: { maxTurns }` triggers only when reasoning loops past `RESEARCHER_MAX_TURNS = 6`. Per-tool budgets prevent over-search before max_turns is reached.
+- **Tracing.** Every agent-running route wraps in `withTrace(name, async () => {...}, { traceId })` with a fresh `generateTraceId()`. Trace URL is logged on the first line: `[<stage> <id>] View trace: https://platform.openai.com/traces/trace?trace_id=<id>`. The trace id is persisted to `drafts.trace_id` at phase start and to every `agent_runs.trace_id` row, so a draft's rows can be joined to the OpenAI traces dashboard.
+- **Per-stage telemetry.** When the SSE route passes `{ draftId, traceId }` to the workflow, each stage (planner / researcher / architect / drafter / editor) records one `agent_runs` row with `model`, `prompt_hash`, `tokens_in/out`, `latency_ms`, `salvaged`, `budget_used`, and any error. Diag scripts naturally skip telemetry (they don't pass `draftId`). Parser/scope run pre-draft-insert in `app/drafts/new/actions.ts` and are NOT recorded today — adding them is straightforward but unscheduled.
+- **`response_format: "json"` for sn-docs MCP.** Both `sn-search.ts` and `sn-get-doc.ts` pass `response_format: "json"` to the MCP. Without it, the MCP returns Markdown-formatted text and the wrappers silently return empty results. `sn_search_docs` JSON is a top-level array `[{ score, title, bundle, url, breadcrumbs, page_id, chunk_index, excerpt }]` (snippet is `excerpt`); `sn_get_doc` is an array of `{ chunk_index, title, bundle, url, page_id, breadcrumbs, content }` chunks that the wrapper concatenates by `chunk_index`. Bundle names must be canonical-full (`vancouver-it-service-management`, not `vancouver-itsm`).
+- **Adding a new app-router API route requires a `next dev` restart.** Turbopack lazy-compiles, and in Next 16 routes added while the dev server is running sometimes never register.
 
 ## Data model
 
-Tables live in Supabase Postgres with RLS enabled:
+Tables in Supabase Postgres with RLS enabled:
 
-- `profiles` — public mirror of `auth.users` (id, email, full_name)
-- `drafts` — one row per RFI; `questions` JSONB carries `[{ index, text, status, content, sources }]`; statuses: `parsed | drafting | ready | in_review | approved`
-- `comments` — anchored to `draft_id` and optionally `anchor_question_index`
-- `assignments` — `reviewer | editor` role; `assignee_user_id` OR `assignee_email` (auto-claimed on signup)
+- `profiles` — public mirror of `auth.users` (id, email, full_name).
+- `drafts` — one row per RFI. Columns:
+  - `topics JSONB` — `[{ index, text, status, plan, research, capability_map, feedback_history, content, sources }]`. Renamed from `questions` during the agent-lab port.
+  - `scope JSONB NULL` — `{ products: [{ name }], version: string | null, summary: string } | null`. Extracted at parse time.
+  - `status` — `parsed | researching | researched | drafting | ready | in_review | approved`. Enforced via a CHECK constraint.
+  - `cancel_requested boolean`, `trace_id text`, `input_text`, `title`, `attached_context jsonb`.
+- `agent_runs` — one row per agent stage execution (planner / researcher / architect / drafter / editor; salvager folds into the researcher row's `salvaged` flag). Columns: `draft_id` (FK with `ON DELETE CASCADE`), `topic_index`, `stage`, `model`, `prompt_hash`, `trace_id`, `tokens_in`, `tokens_out`, `cost_usd` (nullable — computed downstream from a model-rate map), `latency_ms`, `salvaged`, `budget_used jsonb`, `error`, `raw_telemetry jsonb`. RLS tied to `drafts.owner_id`.
+- `comments` — anchored to `draft_id` and optionally `anchor_question_index` (Phase 4, unbuilt).
+- `assignments` — `reviewer | editor` role; `assignee_user_id` OR `assignee_email` (Phase 5, unbuilt).
 
-The migration is in Supabase under the name `initial_schema`. Use the Supabase MCP (`list_tables`, `apply_migration`) for further changes.
+Per-topic status enum: `pending | planning | researching | researched | approved | drafting | drafted | failed`.
+
+Migrations live in `supabase/migrations/*.sql`. Apply via Supabase dashboard SQL editor — Supabase MCP OAuth flow is broken at time of writing ("Unrecognized client_id" from Supabase). Service-role API calls via `@supabase/supabase-js` work fine for table reads/writes (see `scripts/diag-schema.ts` for an example).
 
 ## Agent architecture
 
-Three roles, each an `@openai/agents` Agent:
+Two-phase, gated topology.
 
-1. **Parser** (`lib/agents/parser.ts`) — extracts the question list from raw RFI input. gpt-5-mini, Zod-typed output. User confirms before drafting starts.
-2. **Drafter** (`lib/agents/drafter.ts`) — runs once per question (parallel). Tools: a budget-capped `sn_search_docs` wrapper, the rest of the sn-docs MCP (`sn_get_doc`, `sn_list_bundles`, …), Tavily web search, and a user-attached-context lookup. Produces `{ content, sources }`.
-3. **Editor** (`lib/agents/editor.ts`) — voice/tone harmonization across all drafted questions; mutates `questions[].content` in place. Skipped on per-question regenerate.
+**Phase 1 — research** (`runResearchWorkflow`, route `POST /api/drafts/[id]/research`):
+1. **Parser** runs at draft creation time (`/drafts/new`), not at phase 1 — produces the topic list the user reviews/edits.
+2. **Scope extractor** runs in parallel with Parser at creation time; produces `Scope | null` recorded on the draft. Failure is swallowed (logged) — pipeline tolerates null scope.
+3. For each topic in parallel:
+   - **Planner** produces a `SearchPlan` of 3-5 `SearchItem`s. Sees the scope as additional context when non-empty; can emit `bundle` hints per item.
+   - **Researchers** (parallel, one per SearchItem) — each gets a `ResearcherBag` with `DEFAULT_SN_BUDGET` or `DEFAULT_WEB_BUDGET`. Tool wrappers enforce budgets; salvager fires only if `RESEARCHER_MAX_TURNS = 6` trips.
+   - **Architect** synthesizes the per-Researcher summaries into a `CapabilityMap { architecture_narrative, features[], components[], open_questions[], sources[] }`.
+4. Draft-level status flips `parsed → researching → researched`.
 
-Drafter system prompt loads `lib/ipc-profile.md` to ground answers in IPC's capabilities. Each `run()` is called with `{ maxTurns: 15, context: { snSearchCount: 0 } }` — the context object is what the search-budget wrapper increments.
+**Architect-review gate** (`/drafts/[id]` shows `ResearchedView`): user reviews each capability map; can **re-research with feedback** (POST `/topics/[i]/research`), **approve** (POST `/topics/[i]/approve`), or **approve all and draft**.
 
-Per-question regenerate posts to `/api/drafts/[id]/questions/[index]/draft` with optional `{ feedback }` and only re-runs that one Drafter (no Editor pass).
+**Phase 2 — draft** (`runDraftWorkflow`, route `POST /api/drafts/[id]/draft`): requires status `researched` and at least one `approved` topic with a capability_map.
+1. For each approved topic in parallel: **Drafter** renders the capability_map as Markdown. No research tools — only an optional `attached_context` tool when the user attached docs.
+2. **Editor** harmonizes voice across all drafted topics in one pass. Mutates `topics[].content` in place via index-keyed rewrites.
+3. Draft-level status flips `researched → drafting → ready`.
+
+Per-topic re-draft (POST `/topics/[i]/draft`, allowed in `ready` / `in_review`) re-runs only the Drafter for that topic from the existing capability_map; supports optional `{ feedback }`. Editor is NOT re-run.
 
 ## Useful pointers
 
-- `.env.local.example` — the canonical list of environment variables and what each is for.
-- `_reference/` — example RFI inputs/outputs (local only, gitignored).
-- Supabase project: created via MCP — discover with `list_projects` if needed.
+- `.env.local.example` — canonical env var list. `OPENAI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_*`, `TAVILY_API_KEY`, `SN_DOCS_MCP_URL`, `SN_DOCS_API_KEY`, `ALLOWED_EMAIL_DOMAIN`.
+- `_reference/` — gitignored real RFI examples; useful for manual smoke.
+- `agent-lab/CLAUDE.md` — Python sandbox; the "Divergence from parent project" section was the punch list for the agent-lab-port plan and is now historical context.
+- `.claude/plans/` — see `agent-lab-extraction.md`, `agent-lab-port.md`, `scope-extractor.md`, `aci-tightening.md`, `evals-and-observability.md` (Tier 1 + Tier 2 shipped; Tier 3 is enterprise-readiness), `phases.md`.
+- `.claude/pickup.md` — current session handoff state.
+- Supabase project: `nccnvsnkvbsypliehgxu` (org `xajzgyaovdvccmuvfkhg` / "HP"), free tier, us-east-2.

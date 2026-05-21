@@ -130,7 +130,7 @@ export function QuestionCard({
   }
 
   return (
-    <li className="overflow-hidden rounded-lg border border-line bg-elev-1/60 backdrop-blur-sm transition-colors hover:border-line-2">
+    <li className="overflow-hidden rounded-lg border border-line bg-elev-1 backdrop-blur-sm transition-colors hover:border-line-2">
       <div className="border-b border-line px-5 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -180,7 +180,7 @@ export function QuestionCard({
       </div>
 
       {phase === "feedback" && (
-        <div className="border-b border-line bg-elev-2/60 px-5 py-4">
+        <div className="border-b border-line bg-elev-2 px-5 py-4">
           <Eyebrow className="mb-2">What should change? (optional)</Eyebrow>
           <Textarea
             ref={textareaRef}
@@ -236,7 +236,7 @@ export function QuestionCard({
       </div>
 
       {phase === "error" && errorMsg && (
-        <div className="border-t border-line bg-[rgba(224,123,123,0.05)] px-5 py-3 text-xs text-danger">
+        <div className="border-t border-line bg-danger/10 px-5 py-3 text-xs text-danger">
           {errorMsg}{" "}
           <button
             type="button"
@@ -252,7 +252,7 @@ export function QuestionCard({
       )}
 
       {sources.length > 0 && (
-        <div className="border-t border-line bg-elev-2/30 px-5 py-3">
+        <div className="border-t border-line bg-elev-2 px-5 py-3">
           <Eyebrow className="mb-2">Sources · {sources.length}</Eyebrow>
           <ul className="space-y-1">
             {sources.map((s, i) => (
@@ -261,7 +261,7 @@ export function QuestionCard({
                   href={s.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono text-[11px] text-teal hover:text-emerald hover:underline"
+                  className="font-mono text-[11px] text-accent hover:text-accent hover:underline"
                 >
                   {s.title}
                 </a>

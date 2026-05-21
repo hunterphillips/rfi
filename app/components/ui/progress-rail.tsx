@@ -35,7 +35,7 @@ export function ProgressRail({
           className="absolute inset-y-0 left-0 brand-gradient transition-[width] duration-700 ease-out"
           style={{
             width: `${pct}%`,
-            boxShadow: "0 0 10px rgba(39,182,129,0.55)",
+            boxShadow: "0 0 10px rgba(39,182,129,0.4)",
           }}
         />
         {active && pct > 0 && pct < 100 && (
@@ -44,7 +44,7 @@ export function ProgressRail({
             style={{
               left: `calc(${pct}% - 3.5px)`,
               boxShadow:
-                "0 0 0 3px rgba(39,182,129,0.18), 0 0 14px var(--color-teal)",
+                "0 0 0 3px rgba(39,182,129,0.22), 0 0 12px rgba(39,182,129,0.7)",
             }}
           />
         )}

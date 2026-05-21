@@ -1,6 +1,7 @@
 import { run } from "@openai/agents";
 import { makeDrafter } from "@/lib/agents/drafter";
 import { makeEditor } from "@/lib/agents/editor";
+import { extractUsage, recordRun } from "@/lib/observability/record-run";
 import type { DraftTopic, Source } from "@/lib/types";
 import type { DraftEvent } from "./events";
 
@@ -9,6 +10,10 @@ export type DraftOptions = {
   signal?: AbortSignal;
   skipEditor?: boolean;
   onEvent?: (e: DraftEvent) => void;
+  /** When set, each agent stage records a row in `agent_runs` for observability. */
+  draftId?: string;
+  /** Forwarded to recordRun so a phase's rows share a trace id. */
+  traceId?: string;
 };
 
 const emptyEmit: (e: DraftEvent) => void = () => {};
@@ -26,7 +31,11 @@ export async function runDraftWorkflow(
 ): Promise<{ topics: DraftTopic[]; editor_ran: boolean }> {
   const emit = opts.onEvent ?? emptyEmit;
 
-  const drafter = await makeDrafter({ attached: opts.attached });
+  const {
+    agent: drafter,
+    promptHash: drafterPromptHash,
+    model: drafterModel,
+  } = await makeDrafter({ attached: opts.attached });
 
   await Promise.all(
     topics.map(async (topic) => {
@@ -69,6 +78,18 @@ export async function runDraftWorkflow(
         topic.content = output.content;
         topic.sources = dedupedSources;
         const duration_ms = Date.now() - tq;
+        if (opts.draftId) {
+          void recordRun({
+            stage: "drafter",
+            draftId: opts.draftId,
+            topicIndex: topic.index,
+            model: drafterModel,
+            promptHash: drafterPromptHash,
+            traceId: opts.traceId,
+            latencyMs: duration_ms,
+            ...extractUsage(result),
+          });
+        }
         emit({
           type: "drafter.complete",
           index: topic.index,
@@ -79,6 +100,18 @@ export async function runDraftWorkflow(
       } catch (e) {
         topic.status = "failed";
         const message = e instanceof Error ? e.message : "drafter error";
+        if (opts.draftId) {
+          void recordRun({
+            stage: "drafter",
+            draftId: opts.draftId,
+            topicIndex: topic.index,
+            model: drafterModel,
+            promptHash: drafterPromptHash,
+            traceId: opts.traceId,
+            latencyMs: Date.now() - tq,
+            error: message,
+          });
+        }
         emit({ type: "drafter.error", index: topic.index, message });
       }
     }),
@@ -94,7 +127,11 @@ export async function runDraftWorkflow(
     emit({ type: "editor.started", topic_count: drafted.length });
     const tEd = Date.now();
     try {
-      const editor = await makeEditor();
+      const {
+        agent: editor,
+        promptHash: editorPromptHash,
+        model: editorModel,
+      } = await makeEditor();
       const editorInput = JSON.stringify(
         drafted.map((t) => ({
           index: t.index,
@@ -115,15 +152,46 @@ export async function runDraftWorkflow(
           }
         }
         editor_ran = true;
+        if (opts.draftId) {
+          void recordRun({
+            stage: "editor",
+            draftId: opts.draftId,
+            model: editorModel,
+            promptHash: editorPromptHash,
+            traceId: opts.traceId,
+            latencyMs: Date.now() - tEd,
+            ...extractUsage(editResult),
+          });
+        }
         emit({
           type: "editor.complete",
           duration_ms: Date.now() - tEd,
         });
       } else {
+        if (opts.draftId) {
+          void recordRun({
+            stage: "editor",
+            draftId: opts.draftId,
+            model: "gpt-5",
+            traceId: opts.traceId,
+            latencyMs: Date.now() - tEd,
+            error: "editor empty output",
+          });
+        }
         emit({ type: "editor.skipped", reason: "editor empty output" });
       }
     } catch (e) {
       const reason = e instanceof Error ? e.message : "editor error";
+      if (opts.draftId) {
+        void recordRun({
+          stage: "editor",
+          draftId: opts.draftId,
+          model: "gpt-5",
+          traceId: opts.traceId,
+          latencyMs: Date.now() - tEd,
+          error: reason,
+        });
+      }
       emit({ type: "editor.skipped", reason: `editor error: ${reason}` });
     }
   }
