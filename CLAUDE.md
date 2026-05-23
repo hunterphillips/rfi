@@ -118,7 +118,7 @@ pnpm dlx tsx --env-file=.env.local scripts/eval-budget-sweep.ts      # ~35-40 mi
 - **Proxy, not middleware.** Next 16 deprecated `middleware.ts`. Root file is `proxy.ts` and exports `proxy`. The session-refresh helper in `lib/supabase/middleware.ts` keeps the legacy name for parity with Supabase docs.
 - **Server-side Supabase client is async.** `createClient()` from `lib/supabase/server.ts` returns a Promise — always `await` it.
 - **Auth gate.** `proxy.ts` redirects unauthenticated requests to `/login` (preserving `?next=`) and authenticated requests away from `/login`. `/login` and `/auth/*` are public.
-- **Domain restriction.** Sign-in restricted to `@integritypro.com` both in the login server action (UX) and via a DB trigger on `auth.users` (hard gate). Env-configurable: `ALLOWED_EMAIL_DOMAIN`.
+- **No email-domain restriction.** Sign-up/sign-in is open to any email. (Earlier builds hard-gated `@integritypro.com` via an `auth.users` trigger + a login-action check; both were removed — see `supabase/migrations/20260523b_drop_email_domain_gate.sql`.)
 - **pnpm build allowlist.** `pnpm-workspace.yaml` sets `allowBuilds: { sharp: true, unrs-resolver: true }`. Don't strip it.
 - **SSE handlers keep running after the client disconnects.** Long Researcher/Drafter runs should complete server-side even if the user navigates away. Do NOT tie an `AbortController` to a React effect cleanup — React 19 StrictMode double-invokes effects in dev and will cancel every fetch immediately. See `app/drafts/[id]/draft-runner.tsx` for the pattern.
 - **`maxDuration = 300` is the Vercel Hobby + Fluid Compute ceiling.** All four agent-running SSE routes set this. A phase that runs past 300s gets killed mid-flight; the cancel-poll can't help (function is dead). Recovery is a manual SQL reset of the draft's `status` back to `parsed`/`researched` and `cancel_requested` to `false`. If phases start regularly exceeding 300s, the architecture needs to move to a durable queue (Inngest) — not a longer timeout.
@@ -143,8 +143,9 @@ Tables in Supabase Postgres with RLS enabled:
   - `status` — `parsed | researching | researched | drafting | ready | in_review | approved`. Enforced via a CHECK constraint.
   - `cancel_requested boolean`, `trace_id text`, `input_text`, `title`, `attached_context jsonb`.
 - `agent_runs` — one row per agent stage execution (planner / researcher / architect / drafter / editor; salvager folds into the researcher row's `salvaged` flag). Columns: `draft_id` (FK with `ON DELETE CASCADE`), `topic_index`, `stage`, `model`, `prompt_hash`, `trace_id`, `tokens_in`, `tokens_out`, `cost_usd` (nullable — computed downstream from a model-rate map), `latency_ms`, `salvaged`, `budget_used jsonb`, `error`, `raw_telemetry jsonb`. RLS tied to `drafts.owner_id`.
-- `comments` — partial scaffold (`id, draft_id, anchor_question_index, body, created_at`). Comments were deliberately deferred from Phase 4 to Phase 5 since they only become collaborative once assignees exist. Phase 5 will need `author_user_id NOT NULL`, `resolved` + `resolved_at`, `updated_at`, plus RLS.
-- `assignments` — `reviewer | editor` role; `assignee_user_id` OR `assignee_email` (Phase 5, unbuilt).
+- `comments` — per-topic threads (Phase 5). Columns: `id, draft_id, anchor_question_index` (legacy name = topic index), **`author_id NOT NULL`** (refs `auth.users`; the original scaffold's author column — NOT `author_user_id`), `body`, `resolved bool DEFAULT false`, `resolved_at`, `created_at`, `updated_at`. RLS (`20260523_phase5_collab.sql`): owner/assignee read+insert, author/owner update+delete.
+- `assignments` — reviewer assignment (Phase 5). Columns: `id, draft_id, role` (`reviewer | editor`), `assignee_user_id` (nullable — set when the email maps to a profile) OR `assignee_email`, **`assigned_by NOT NULL`** (refs `auth.users`; the owner who created the row), `status` (`pending | accepted | declined`), `created_at`, `updated_at`. RLS: owner manages; assignee sees own row (matched by user id or `auth.jwt()` email via the `is_draft_assignee()` SECURITY DEFINER helper).
+- **⚠️ The live schema for `comments`/`assignments` carries NOT-NULL columns (`author_id`, `assigned_by`) that pre-dated and weren't in older docs. When writing to a Postgres table, introspect the real columns (e.g. `scripts/diag-phase5.ts`, or an `information_schema.columns` query in the dashboard) rather than trusting prose — two Phase 5 insert bugs came from building against an incomplete column list.
 
 Per-topic status enum: `pending | planning | researching | researched | approved | drafting | drafted | failed`.
 
@@ -176,7 +177,7 @@ Per-topic re-draft (POST `/topics/[i]/draft`, allowed in `ready` / `in_review`) 
 
 ## Useful pointers
 
-- `.env.local.example` — canonical env var list. `OPENAI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_*`, `TAVILY_API_KEY`, `SN_DOCS_MCP_URL`, `SN_DOCS_API_KEY`, `ALLOWED_EMAIL_DOMAIN`.
+- `.env.local.example` — canonical env var list. `OPENAI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_*`, `TAVILY_API_KEY`, `SN_DOCS_MCP_URL`, `SN_DOCS_API_KEY`.
 - `_reference/` — gitignored real RFI examples; useful for manual smoke.
 - `agent-lab/CLAUDE.md` — Python sandbox; the "Divergence from parent project" section was the punch list for the agent-lab-port plan and is now historical context.
 - `.claude/plans/` — see `agent-lab-extraction.md`, `agent-lab-port.md`, `scope-extractor.md`, `aci-tightening.md`, `evals-and-observability.md` (Tier 1 + Tier 2 shipped; Tier 3 is enterprise-readiness), `phases.md`.

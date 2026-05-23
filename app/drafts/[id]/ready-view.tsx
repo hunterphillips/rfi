@@ -1,10 +1,38 @@
-import type { DraftRow } from "@/lib/types";
+import type { Assignment, Comment, DraftRow, ViewerRole } from "@/lib/types";
 import { QuestionCard } from "./question-card";
+import { ReviewPanel } from "./review-panel";
 import { EditableTitle } from "./editable-title";
 import { Eyebrow } from "@/app/components/ui/card";
 import { StatusPill } from "@/app/components/ui/status-pill";
 
-export function ReadyView({ draft }: { draft: DraftRow }) {
+export function ReadyView({
+  draft,
+  role,
+  currentUserId,
+  assignments,
+  comments,
+  authorEmails,
+}: {
+  draft: DraftRow;
+  role: ViewerRole | null;
+  currentUserId: string | null;
+  assignments: Assignment[];
+  comments: Comment[];
+  authorEmails: Record<string, string>;
+}) {
+  const isOwner = role === "owner";
+  const canEditContent =
+    (role === "owner" || role === "editor") && draft.status !== "approved";
+  const canRegenerate = role === "owner" && draft.status !== "approved";
+
+  // Bucket comments by anchored topic index (legacy column name).
+  const byTopic = new Map<number, Comment[]>();
+  for (const c of comments) {
+    const arr = byTopic.get(c.anchor_question_index) ?? [];
+    arr.push(c);
+    byTopic.set(c.anchor_question_index, arr);
+  }
+
   return (
     <div className="space-y-7">
       <header className="space-y-3">
@@ -20,9 +48,26 @@ export function ReadyView({ draft }: { draft: DraftRow }) {
         </p>
       </header>
 
+      <ReviewPanel
+        draftId={draft.id}
+        status={draft.status}
+        role={role}
+        assignments={assignments}
+      />
+
       <ol className="space-y-5">
         {draft.topics.map((q) => (
-          <QuestionCard key={q.index} draftId={draft.id} question={q} />
+          <QuestionCard
+            key={q.index}
+            draftId={draft.id}
+            question={q}
+            canEditContent={canEditContent}
+            canRegenerate={canRegenerate}
+            isOwner={isOwner}
+            currentUserId={currentUserId}
+            comments={byTopic.get(q.index) ?? []}
+            authorEmails={authorEmails}
+          />
         ))}
       </ol>
     </div>

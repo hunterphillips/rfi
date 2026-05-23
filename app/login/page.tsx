@@ -65,7 +65,7 @@ export default function LoginPage() {
         </div>
 
         <p className="rise rise-3 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-ink-5">
-          internal · @integritypro.com only
+          internal · sign in with email
         </p>
       </div>
     </div>

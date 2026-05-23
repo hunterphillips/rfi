@@ -3,9 +3,6 @@
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
-const ALLOWED_DOMAIN =
-  process.env.ALLOWED_EMAIL_DOMAIN?.toLowerCase() ?? "integritypro.com";
-
 export type LoginState =
   | { status: "idle" }
   | { status: "ok"; email: string }
@@ -21,13 +18,6 @@ export async function sendMagicLink(
 
   if (!email || !email.includes("@")) {
     return { status: "error", message: "Enter a valid email." };
-  }
-
-  if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    return {
-      status: "error",
-      message: `Sign-in is restricted to @${ALLOWED_DOMAIN} addresses.`,
-    };
   }
 
   const supabase = await createClient();

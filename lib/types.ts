@@ -84,6 +84,41 @@ export type DraftStatus =
   | "in_review"
   | "approved";
 
+// ── Phase 5: collaboration ──────────────────────────────────────────────────
+
+export type AssignmentRole = "reviewer" | "editor";
+export type AssignmentStatus = "pending" | "accepted" | "declined";
+
+// What the current viewer is allowed to do on a draft. `editor` implies
+// review rights too; `null` means no access (should never reach the page).
+export type ViewerRole = "owner" | "editor" | "reviewer";
+
+export type Assignment = {
+  id: string;
+  draft_id: string;
+  role: AssignmentRole;
+  assignee_user_id: string | null;
+  assignee_email: string | null;
+  assigned_by: string; // user id of the owner who created the assignment
+  status: AssignmentStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Comment = {
+  id: string;
+  draft_id: string;
+  // Legacy column name from the questions→topics rename; this is the topic index.
+  anchor_question_index: number;
+  // Original scaffold column (references auth.users); the comment author.
+  author_id: string;
+  body: string;
+  resolved: boolean;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type DraftRow = {
   id: string;
   owner_id: string;

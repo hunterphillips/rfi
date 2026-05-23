@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { canEdit, getDraftAccess } from "@/lib/auth/draft-access";
 import type { CapabilityMap, DraftTopic, Scope, Source } from "@/lib/types";
 
 export async function saveQuestions(
@@ -133,20 +134,28 @@ export async function updateCapabilityMap(
   topicIndex: number,
   map: CapabilityMap,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const supabase = await createClient();
-  const { data: existing, error: fetchErr } = await supabase
-    .from("drafts")
-    .select("topics, status")
-    .eq("id", draftId)
-    .single<{ topics: DraftTopic[]; status: string }>();
-  if (fetchErr || !existing) {
-    return { ok: false, message: fetchErr?.message ?? "Draft not found." };
+  const access = await getDraftAccess(draftId);
+  if (!access) return { ok: false, message: "Draft not found." };
+  if (!canEdit(access.role)) {
+    return { ok: false, message: "You don't have edit access to this draft." };
   }
-  if (existing.status !== "researched") {
+  if (access.status !== "researched") {
     return {
       ok: false,
-      message: `Capability map can only be edited while the draft is in 'researched' (currently '${existing.status}').`,
+      message: `Capability map can only be edited while the draft is in 'researched' (currently '${access.status}').`,
     };
+  }
+
+  // Writes go through the service-role client: editor assignees are authorized
+  // above but RLS keeps `drafts` UPDATE owner-only.
+  const supabase = createServiceClient();
+  const { data: existing, error: fetchErr } = await supabase
+    .from("drafts")
+    .select("topics")
+    .eq("id", draftId)
+    .single<{ topics: DraftTopic[] }>();
+  if (fetchErr || !existing) {
+    return { ok: false, message: fetchErr?.message ?? "Draft not found." };
   }
   if (topicIndex < 0 || topicIndex >= existing.topics.length) {
     return { ok: false, message: "Topic index out of range." };
@@ -202,20 +211,28 @@ export async function updateTopicContent(
   topicIndex: number,
   content: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const supabase = await createClient();
-  const { data: existing, error: fetchErr } = await supabase
-    .from("drafts")
-    .select("topics, status")
-    .eq("id", draftId)
-    .single<{ topics: DraftTopic[]; status: string }>();
-  if (fetchErr || !existing) {
-    return { ok: false, message: fetchErr?.message ?? "Draft not found." };
+  const access = await getDraftAccess(draftId);
+  if (!access) return { ok: false, message: "Draft not found." };
+  if (!canEdit(access.role)) {
+    return { ok: false, message: "You don't have edit access to this draft." };
   }
-  if (existing.status !== "ready" && existing.status !== "in_review") {
+  if (access.status !== "ready" && access.status !== "in_review") {
     return {
       ok: false,
-      message: `Topic content can only be edited while the draft is in 'ready' or 'in_review' (currently '${existing.status}').`,
+      message: `Topic content can only be edited while the draft is in 'ready' or 'in_review' (currently '${access.status}').`,
     };
+  }
+
+  // Service-role write — owner OR editor assignee authorized above; RLS keeps
+  // `drafts` UPDATE owner-only.
+  const supabase = createServiceClient();
+  const { data: existing, error: fetchErr } = await supabase
+    .from("drafts")
+    .select("topics")
+    .eq("id", draftId)
+    .single<{ topics: DraftTopic[] }>();
+  if (fetchErr || !existing) {
+    return { ok: false, message: fetchErr?.message ?? "Draft not found." };
   }
   if (topicIndex < 0 || topicIndex >= existing.topics.length) {
     return { ok: false, message: "Topic index out of range." };

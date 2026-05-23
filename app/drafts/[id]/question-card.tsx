@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { updateTopicContent } from "./actions";
+import { CommentThread } from "./comment-thread";
 import { Button } from "@/app/components/ui/button";
 import { Eyebrow } from "@/app/components/ui/card";
 import { Pill } from "@/app/components/ui/pill";
 import { Textarea } from "@/app/components/ui/input";
-import type { DraftTopic } from "@/lib/types";
+import type { Comment, DraftTopic } from "@/lib/types";
 
 type SseEvent =
   | { type: "topic.started"; index: number }
@@ -29,9 +30,21 @@ type Phase = "idle" | "feedback" | "running" | "cancelling" | "editing" | "error
 export function QuestionCard({
   draftId,
   question,
+  canEditContent = true,
+  canRegenerate = true,
+  isOwner = true,
+  currentUserId = null,
+  comments = [],
+  authorEmails = {},
 }: {
   draftId: string;
   question: DraftTopic;
+  canEditContent?: boolean;
+  canRegenerate?: boolean;
+  isOwner?: boolean;
+  currentUserId?: string | null;
+  comments?: Comment[];
+  authorEmails?: Record<string, string>;
 }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
@@ -181,20 +194,24 @@ export function QuestionCard({
           <div className="flex shrink-0 items-center gap-3">
             {phase === "idle" && (
               <>
-                <button
-                  type="button"
-                  onClick={startEdit}
-                  className="font-display text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3 transition-colors hover:text-ink"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPhase("feedback")}
-                  className="font-display text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3 transition-colors hover:text-ink"
-                >
-                  Regenerate
-                </button>
+                {canEditContent && (
+                  <button
+                    type="button"
+                    onClick={startEdit}
+                    className="font-display text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3 transition-colors hover:text-ink"
+                  >
+                    Edit
+                  </button>
+                )}
+                {canRegenerate && (
+                  <button
+                    type="button"
+                    onClick={() => setPhase("feedback")}
+                    className="font-display text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3 transition-colors hover:text-ink"
+                  >
+                    Regenerate
+                  </button>
+                )}
               </>
             )}
             {phase === "editing" && savePending && (
@@ -361,6 +378,15 @@ export function QuestionCard({
           </ul>
         </div>
       )}
+
+      <CommentThread
+        draftId={draftId}
+        topicIndex={question.index}
+        comments={comments}
+        currentUserId={currentUserId}
+        isOwner={isOwner}
+        authorEmails={authorEmails}
+      />
     </li>
   );
 }
