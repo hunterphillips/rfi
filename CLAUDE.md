@@ -13,11 +13,13 @@ See [README.md](./README.md) for the architecture overview. Active build plans l
 - `unpdf` + `mammoth` for PDF/DOCX ingestion
 - `react-markdown` + `remark-gfm` for draft rendering
 - Resend for transactional email
-- Hosted on Vercel (planned)
+- Hosted on Vercel (Hobby plan, Fluid Compute) at `rfi-coral.vercel.app`
 
 ## Structure
 
-- `app/` — Next.js app router. Auth pages, drafts pages, API routes.
+- `app/` — Next.js app router. Auth pages, drafts pages, API routes, shared UI.
+- `app/components/` — shared layout (`app-header.tsx`) + brand (`brand.tsx`: `BrandLockup` for header, `BrandHero` for /login, `BrandMark` SVG for empty states). Logos come from `public/logo-banner.png` and `public/logo-full.png`.
+- `app/components/ui/` — primitives: `button.tsx` (variants: primary/secondary/ghost/danger/link, sizes xs/sm/md/lg; primary uses the IPC gradient), `input.tsx` (`Input`/`Textarea`/`Label`), `card.tsx` (`Card`/`CardHeader`/`Body`/`Footer`/`Eyebrow`), `pill.tsx` (tonal), `status-pill.tsx` (driven by `TopicStatus`/`DraftStatus`), `progress-rail.tsx` (signature gradient bar; `PipelineStep` vertical variant).
 - `app/api/drafts/[id]/research/` — SSE; phase 1 (Planner → parallel Researchers → Architect, per topic).
 - `app/api/drafts/[id]/topics/[index]/research/` — SSE; re-research one topic with optional `{ feedback }`.
 - `app/api/drafts/[id]/topics/[index]/approve/` — toggle a topic's `approved | researched` status (no agents).
@@ -49,12 +51,13 @@ See [README.md](./README.md) for the architecture overview. Active build plans l
   - `runner.ts` (`runEval(stage, fixtureFile, runFn, judgeFn)`)
 - `lib/observability/record-run.ts` — `recordRun(input)` inserts an `agent_runs` row (best-effort, swallows + logs errors). `extractUsage(result)` pulls `tokensIn`/`tokensOut` from `result.runContext.usage`.
 - `lib/supabase/` — Supabase clients: `client.ts` (browser), `server.ts` (server), `middleware.ts` (proxy helper).
+- `lib/cn.ts` — tiny classnames helper (`cn(...parts)`). No `clsx` dependency.
 - `lib/ipc-profile.md` — IPC capability profile; injected into Drafter + Editor prompts only (Architect deliberately doesn't get it).
 - `lib/types.ts` — `DraftRow`, `DraftTopic`, `Scope`, `CapabilityMap`, `PlanItem`, `ResearchSummary`, `FeedbackEntry`, status enums.
 - `proxy.ts` — Next 16 proxy file (formerly `middleware.ts`); refreshes session + gates routes.
 - `scripts/` — local diagnostic + eval scripts. `diag-*` are service-role / single-shot probes; `eval-*` run fixture suites with gpt-5 judges and print aggregates.
   - `diag-{research,draft,mcp,schema}.ts` — workflow + MCP + schema smoke
-  - `diag-{agent-runs,agent-runs-query,drafts-columns,sn-search,sn-get-doc}.ts` — observability + MCP-shape probes added during Tier 2
+  - `diag-{agent-runs,agent-runs-query,drafts-columns,sn-search,sn-get-doc,comments-columns}.ts` — observability + MCP-shape + table-schema probes
   - `eval-{parser,scope,researcher}.ts` — per-stage evals against `evals/fixtures/*.json`
   - `eval-budget-sweep.ts` — runs researcher fixtures across budget variants; comparison table
 - `supabase/migrations/` — applied via Supabase dashboard SQL editor (MCP OAuth is broken at time of writing).
@@ -118,6 +121,7 @@ pnpm dlx tsx --env-file=.env.local scripts/eval-budget-sweep.ts      # ~35-40 mi
 - **Domain restriction.** Sign-in restricted to `@integritypro.com` both in the login server action (UX) and via a DB trigger on `auth.users` (hard gate). Env-configurable: `ALLOWED_EMAIL_DOMAIN`.
 - **pnpm build allowlist.** `pnpm-workspace.yaml` sets `allowBuilds: { sharp: true, unrs-resolver: true }`. Don't strip it.
 - **SSE handlers keep running after the client disconnects.** Long Researcher/Drafter runs should complete server-side even if the user navigates away. Do NOT tie an `AbortController` to a React effect cleanup — React 19 StrictMode double-invokes effects in dev and will cancel every fetch immediately. See `app/drafts/[id]/draft-runner.tsx` for the pattern.
+- **`maxDuration = 300` is the Vercel Hobby + Fluid Compute ceiling.** All four agent-running SSE routes set this. A phase that runs past 300s gets killed mid-flight; the cancel-poll can't help (function is dead). Recovery is a manual SQL reset of the draft's `status` back to `parsed`/`researched` and `cancel_requested` to `false`. If phases start regularly exceeding 300s, the architecture needs to move to a durable queue (Inngest) — not a longer timeout.
 - **Tool budgets via `ResearcherBag`, NOT `RunContext.context`.** The old monolithic-Drafter `ToolBudgetContext` pattern was deliberately removed during the agent-lab port. Per-Researcher budgets live in a closure-bound `ResearcherBag` (`lib/agents/tools/evidence.ts`); wrappers receive `bag?: ResearcherBag` at construction time. Defaults: `DEFAULT_SN_BUDGET = { maxSearches: 2, maxDocFetches: 1 }`, `DEFAULT_WEB_BUDGET = { maxSearches: 2, maxDocFetches: 0 }`.
 - **Tool returns are normalized + truncated.** Every wrapper returns `{ ok: true, results: [...] }` or `{ ok: false, error }` to the model. Snippets capped at `SNIPPET_MAX = 400`, doc previews at `CONTENT_PREVIEW_MAX = 4000`. Raw upstream payloads stay on the typed `EvidenceItem` for downstream salvager / future evals.
 - **Salvager is a fallback, not the primary control.** `errorHandlers: { maxTurns }` triggers only when reasoning loops past `RESEARCHER_MAX_TURNS = 6`. Per-tool budgets prevent over-search before max_turns is reached.
@@ -125,6 +129,8 @@ pnpm dlx tsx --env-file=.env.local scripts/eval-budget-sweep.ts      # ~35-40 mi
 - **Per-stage telemetry.** When the SSE route passes `{ draftId, traceId }` to the workflow, each stage (planner / researcher / architect / drafter / editor) records one `agent_runs` row with `model`, `prompt_hash`, `tokens_in/out`, `latency_ms`, `salvaged`, `budget_used`, and any error. Diag scripts naturally skip telemetry (they don't pass `draftId`). Parser/scope run pre-draft-insert in `app/drafts/new/actions.ts` and are NOT recorded today — adding them is straightforward but unscheduled.
 - **`response_format: "json"` for sn-docs MCP.** Both `sn-search.ts` and `sn-get-doc.ts` pass `response_format: "json"` to the MCP. Without it, the MCP returns Markdown-formatted text and the wrappers silently return empty results. `sn_search_docs` JSON is a top-level array `[{ score, title, bundle, url, breadcrumbs, page_id, chunk_index, excerpt }]` (snippet is `excerpt`); `sn_get_doc` is an array of `{ chunk_index, title, bundle, url, page_id, breadcrumbs, content }` chunks that the wrapper concatenates by `chunk_index`. Bundle names must be canonical-full (`vancouver-it-service-management`, not `vancouver-itsm`).
 - **Adding a new app-router API route requires a `next dev` restart.** Turbopack lazy-compiles, and in Next 16 routes added while the dev server is running sometimes never register.
+- **Frontend is light-theme canonical, IPC-branded.** Design tokens live in `app/globals.css` `@theme` — surfaces `canvas/elev-1/2/3`, lines `line/line-2/3`, ink scale `ink/ink-2..5`, brand `lime/grass/emerald/teal`, semantic `danger/warn/info`, plus `accent` (`#1d7a4a` — the AA-contrast green for *text* on light bg). Fonts: Chakra Petch (display), Manrope (body), JetBrains Mono. Use the primitives in `app/components/ui/` rather than re-rolling buttons/inputs/pills. Use `bg-emerald/10 border-emerald/30` style opacity modifiers for tinted surfaces; **don't** use surface tokens with opacity (`bg-elev-1/60` etc. are invisible on light). Use `text-accent` for green text (not `text-teal`/`text-emerald` which lack contrast on white). The signature lime→emerald→teal `brand-gradient` utility is reserved for: brand mark, primary CTAs, `ProgressRail`, hairline page accents — keep it scarce.
+- **Product name is "RFX"** in user-facing UI (set in `BrandLockup`'s `productLabel` and `BrandHero`'s `tagline` defaults in `app/components/brand.tsx`, plus `app/layout.tsx` metadata). Repo dir is still `/rfi/` for legacy reasons.
 
 ## Data model
 
@@ -137,7 +143,7 @@ Tables in Supabase Postgres with RLS enabled:
   - `status` — `parsed | researching | researched | drafting | ready | in_review | approved`. Enforced via a CHECK constraint.
   - `cancel_requested boolean`, `trace_id text`, `input_text`, `title`, `attached_context jsonb`.
 - `agent_runs` — one row per agent stage execution (planner / researcher / architect / drafter / editor; salvager folds into the researcher row's `salvaged` flag). Columns: `draft_id` (FK with `ON DELETE CASCADE`), `topic_index`, `stage`, `model`, `prompt_hash`, `trace_id`, `tokens_in`, `tokens_out`, `cost_usd` (nullable — computed downstream from a model-rate map), `latency_ms`, `salvaged`, `budget_used jsonb`, `error`, `raw_telemetry jsonb`. RLS tied to `drafts.owner_id`.
-- `comments` — anchored to `draft_id` and optionally `anchor_question_index` (Phase 4, unbuilt).
+- `comments` — partial scaffold (`id, draft_id, anchor_question_index, body, created_at`). Comments were deliberately deferred from Phase 4 to Phase 5 since they only become collaborative once assignees exist. Phase 5 will need `author_user_id NOT NULL`, `resolved` + `resolved_at`, `updated_at`, plus RLS.
 - `assignments` — `reviewer | editor` role; `assignee_user_id` OR `assignee_email` (Phase 5, unbuilt).
 
 Per-topic status enum: `pending | planning | researching | researched | approved | drafting | drafted | failed`.
@@ -165,6 +171,8 @@ Two-phase, gated topology.
 3. Draft-level status flips `researched → drafting → ready`.
 
 Per-topic re-draft (POST `/topics/[i]/draft`, allowed in `ready` / `in_review`) re-runs only the Drafter for that topic from the existing capability_map; supports optional `{ feedback }`. Editor is NOT re-run.
+
+`topics[i].content` also has a non-agent write path: `updateTopicContent` server action (called from the Edit button in `question-card.tsx`) lets the owner manually edit the rendered Markdown without an LLM call. Allowed in `ready` / `in_review`. Sources are left untouched on manual edits.
 
 ## Useful pointers
 

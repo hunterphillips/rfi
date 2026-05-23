@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { updateTopicContent } from "./actions";
 import { Button } from "@/app/components/ui/button";
 import { Eyebrow } from "@/app/components/ui/card";
 import { Pill } from "@/app/components/ui/pill";
@@ -23,7 +24,7 @@ type SseEvent =
   | { type: "done" }
   | { type: "error"; message: string };
 
-type Phase = "idle" | "feedback" | "running" | "cancelling" | "error";
+type Phase = "idle" | "feedback" | "running" | "cancelling" | "editing" | "error";
 
 export function QuestionCard({
   draftId,
@@ -51,10 +52,43 @@ export function QuestionCard({
     setSources(question.sources);
   }
 
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  // Inline edit state.
+  const [editDraft, setEditDraft] = useState("");
+  const [savePending, startSave] = useTransition();
+
+  const feedbackRef = useRef<HTMLTextAreaElement | null>(null);
+  const editRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
-    if (phase === "feedback") textareaRef.current?.focus();
+    if (phase === "feedback") feedbackRef.current?.focus();
+    if (phase === "editing") editRef.current?.focus();
   }, [phase]);
+
+  function startEdit() {
+    setEditDraft(content ?? "");
+    setErrorMsg(null);
+    setPhase("editing");
+  }
+  function cancelEdit() {
+    setPhase("idle");
+    setEditDraft("");
+  }
+  function submitEdit() {
+    const next = editDraft;
+    const previous = content;
+    setContent(next);
+    setPhase("idle");
+    setErrorMsg(null);
+    startSave(async () => {
+      const res = await updateTopicContent(draftId, question.index, next);
+      if (!res.ok) {
+        setContent(previous);
+        setPhase("error");
+        setErrorMsg(res.message);
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   async function onCancel() {
     setPhase("cancelling");
@@ -144,15 +178,27 @@ export function QuestionCard({
               {question.text}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-3">
             {phase === "idle" && (
-              <button
-                type="button"
-                onClick={() => setPhase("feedback")}
-                className="font-display text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3 transition-colors hover:text-ink"
-              >
-                Regenerate
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  className="font-display text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3 transition-colors hover:text-ink"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhase("feedback")}
+                  className="font-display text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3 transition-colors hover:text-ink"
+                >
+                  Regenerate
+                </button>
+              </>
+            )}
+            {phase === "editing" && savePending && (
+              <span className="font-mono text-[11px] text-ink-3">Saving…</span>
             )}
             {phase === "running" && (
               <>
@@ -183,7 +229,7 @@ export function QuestionCard({
         <div className="border-b border-line bg-elev-2 px-5 py-4">
           <Eyebrow className="mb-2">What should change? (optional)</Eyebrow>
           <Textarea
-            ref={textareaRef}
+            ref={feedbackRef}
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             onKeyDown={(e) => {
@@ -224,7 +270,52 @@ export function QuestionCard({
       )}
 
       <div className="px-5 py-5">
-        {content ? (
+        {phase === "editing" ? (
+          <div className="space-y-3">
+            <Textarea
+              ref={editRef}
+              value={editDraft}
+              onChange={(e) => setEditDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  submitEdit();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelEdit();
+                }
+              }}
+              rows={Math.min(24, Math.max(8, editDraft.split("\n").length + 1))}
+              spellCheck
+              className="font-mono text-[12.5px] leading-relaxed"
+            />
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] text-ink-4">
+                Raw Markdown · ⌘+Enter to save · Esc to cancel
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={cancelEdit}
+                  disabled={savePending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={submitEdit}
+                  disabled={savePending}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : content ? (
           <article className="md-prose">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
           </article>

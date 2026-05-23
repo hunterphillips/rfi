@@ -197,6 +197,44 @@ export async function updateCapabilityMap(
   return { ok: true };
 }
 
+export async function updateTopicContent(
+  draftId: string,
+  topicIndex: number,
+  content: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const supabase = await createClient();
+  const { data: existing, error: fetchErr } = await supabase
+    .from("drafts")
+    .select("topics, status")
+    .eq("id", draftId)
+    .single<{ topics: DraftTopic[]; status: string }>();
+  if (fetchErr || !existing) {
+    return { ok: false, message: fetchErr?.message ?? "Draft not found." };
+  }
+  if (existing.status !== "ready" && existing.status !== "in_review") {
+    return {
+      ok: false,
+      message: `Topic content can only be edited while the draft is in 'ready' or 'in_review' (currently '${existing.status}').`,
+    };
+  }
+  if (topicIndex < 0 || topicIndex >= existing.topics.length) {
+    return { ok: false, message: "Topic index out of range." };
+  }
+
+  const nextTopics = existing.topics.map((t, i) =>
+    i === topicIndex ? { ...t, content } : t,
+  );
+
+  const { error: updateErr } = await supabase
+    .from("drafts")
+    .update({ topics: nextTopics })
+    .eq("id", draftId);
+  if (updateErr) return { ok: false, message: updateErr.message };
+
+  revalidatePath(`/drafts/${draftId}`);
+  return { ok: true };
+}
+
 export async function deleteDraft(formData: FormData): Promise<void> {
   const draftId = String(formData.get("draftId") ?? "");
   if (!draftId) return;
