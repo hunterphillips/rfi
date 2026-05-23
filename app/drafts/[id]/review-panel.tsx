@@ -24,11 +24,13 @@ export function ReviewPanel({
   status,
   role,
   assignments,
+  emailById = {},
 }: {
   draftId: string;
   status: DraftStatus;
   role: ViewerRole | null;
   assignments: Assignment[];
+  emailById?: Record<string, string>;
 }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
@@ -83,7 +85,10 @@ export function ReviewPanel({
             >
               <div className="min-w-0">
                 <span className="truncate font-mono text-[12px] text-ink-2">
-                  {a.assignee_email ?? a.assignee_user_id}
+                  {a.assignee_email ??
+                    (a.assignee_user_id ? emailById[a.assignee_user_id] : null) ??
+                    a.assignee_user_id ??
+                    "—"}
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-2">

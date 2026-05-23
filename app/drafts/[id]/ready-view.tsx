@@ -53,6 +53,7 @@ export function ReadyView({
         status={draft.status}
         role={role}
         assignments={assignments}
+        emailById={authorEmails}
       />
 
       <ol className="space-y-5">

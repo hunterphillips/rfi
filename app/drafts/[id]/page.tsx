@@ -60,8 +60,15 @@ export default async function DraftPage({
     assignments = assignRes.data ?? [];
     comments = commentRes.data ?? [];
 
-    // Resolve commenter emails for display (service client — profiles lookup).
-    const ids = [...new Set(comments.map((c) => c.author_id))];
+    // Resolve commenter + assignee emails for display (service client lookup).
+    const ids = [
+      ...new Set([
+        ...comments.map((c) => c.author_id),
+        ...assignments
+          .map((a) => a.assignee_user_id)
+          .filter((x): x is string => Boolean(x)),
+      ]),
+    ];
     if (ids.length > 0) {
       const svc = createServiceClient();
       const { data: profiles } = await svc
