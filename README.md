@@ -1,8 +1,8 @@
 # RFX
 
-Internal IPC tool for drafting RFx responses (RFI / RFP / RFQ / RFB) with an agent workflow. RFIs are the current focus; the architecture is designed to extend to the other three.
+Automate drafting RFx responses (RFI / RFP / RFQ / RFB) with an agent workflow.
 
-A user pastes or uploads an RFI; a Parser extracts the discrete topics and a Scope extractor pulls the ServiceNow surface in scope. For each topic, a Planner emits a search plan that parallel Researchers execute (sn-docs MCP + Tavily web), and an Architect synthesizes the findings into a capability map. The user reviews each map and can re-research with feedback, trim it inline, or approve. Approved topics flow into a per-topic Drafter that renders Markdown from the capability map, and an Editor harmonizes voice across the document. Final responses can be edited inline and ultimately approved.
+A user pastes or uploads an RFx; a Parser extracts the discrete topics and a Scope extractor pulls the ServiceNow surface in scope. For each topic, a Planner emits a search plan that parallel Researchers execute (sn-docs MCP + Tavily web), and an Architect synthesizes the findings into a capability map. The user reviews each map and can re-research with feedback, trim it inline, or approve. Approved topics flow into a per-topic Drafter that renders Markdown from the capability map, and an Editor harmonizes voice across the document. Final responses can be edited inline and ultimately approved.
 
 ## Stack
 
@@ -30,7 +30,12 @@ Open http://localhost:3000.
 - **Architect-review gate** — user can re-research with feedback, trim the map inline (features / components / open questions / narrative), or approve each topic.
 - **Phase 2 — draft** — per approved topic, **Drafter** renders the capability map as Markdown (no research tools; only optional `attached_context`). **Editor** harmonizes voice across all topics in one pass. The final Markdown is also editable inline.
 
+<<<<<<< HEAD
 Drafter and Editor inject `lib/ipc-profile.md` to ground voice in IPC's capability statements. The Architect is deliberately denied the profile — its output is internal-facing.
+=======
+System prompt for the Drafter loads `lib/ipc-profile.md` to ground answers in company's actual capabilities.
+
+> > > > > > > 56fec056121b5f55edda851f424138d7f6057a0d
 
 ## Statuses
 
