@@ -17,10 +17,10 @@ RFx ──> Parser + Scope extractor
         Drafter ──> Editor ──> final Markdown response
 ```
 
-- **Creation** — Parser + Scope extractor (parallel).
-- **Phase 1 — research** (per topic, parallel): **Planner** → **Researchers** (per `SearchItem`, with `ResearcherBag` budgets + max-turns salvage) → **Architect** synthesizes a `CapabilityMap` (architecture narrative, features, components, open questions, sources).
-- **Human-review** — user can rerun research with feedback, trim the map inline (features / components / open questions / narrative), or approve each topic.
-- **Phase 2 — draft** — per approved topic, **Drafter** renders the capability map as Markdown (no research tools; only optional `attached_context`). **Editor** harmonizes voice across all topics in one pass. The final Markdown is also editable inline.
+- **Creation** — Parser splits the RFx into topics; Scope extractor identifies the ServiceNow products in scope.
+- **Research** — per topic, a Planner builds a search plan, parallel Researchers execute it (ServiceNow docs + web), and an Architect synthesizes the findings into a capability map.
+- **Review** — the user can rerun research with feedback, trim the map inline, or approve each topic.
+- **Draft** — a Drafter renders each approved map as Markdown, then an Editor harmonizes voice across the document. The result is editable inline.
 
 ## Stack
 
