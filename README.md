@@ -30,17 +30,6 @@ Open http://localhost:3000.
 - **Architect-review gate** — user can re-research with feedback, trim the map inline (features / components / open questions / narrative), or approve each topic.
 - **Phase 2 — draft** — per approved topic, **Drafter** renders the capability map as Markdown (no research tools; only optional `attached_context`). **Editor** harmonizes voice across all topics in one pass. The final Markdown is also editable inline.
 
-<<<<<<< HEAD
-Drafter and Editor inject `lib/ipc-profile.md` to ground voice in IPC's capability statements. The Architect is deliberately denied the profile — its output is internal-facing.
-=======
-System prompt for the Drafter loads `lib/ipc-profile.md` to ground answers in company's actual capabilities.
-
-> > > > > > > 56fec056121b5f55edda851f424138d7f6057a0d
-
 ## Statuses
 
 `parsed` → `researching` → `researched` → `drafting` → `ready` → `in_review` → `approved`
-
-## More
-
-`CLAUDE.md` is the detailed onboarding doc for agents working in this repo. Build phases live at `.claude/plans/phases.md`.
